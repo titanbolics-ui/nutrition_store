@@ -13,6 +13,7 @@ import { orderPaidEmail } from "./emails/order-paid";
 import { orderFulfilledEmail } from "./emails/order-fulfilled";
 import { orderShippedEmail } from "./emails/order-shipped";
 import { orderDeliveredEmail } from "./emails/order-delivered";
+import { passwordResetEmail } from "./emails/password-reset";
 
 type ResendOptions = {
   api_key: string;
@@ -36,6 +37,7 @@ enum Templates {
   ORDER_FULFILLED = "order-fulfilled",
   ORDER_SHIPPED = "order-shipped",
   ORDER_DELIVERED = "order-delivered",
+  PASSWORD_RESET = "password-reset",
 }
 
 const templates: { [key in Templates]?: (props: unknown) => React.ReactNode } =
@@ -45,6 +47,7 @@ const templates: { [key in Templates]?: (props: unknown) => React.ReactNode } =
     [Templates.ORDER_FULFILLED]: orderFulfilledEmail,
     [Templates.ORDER_SHIPPED]: orderShippedEmail,
     [Templates.ORDER_DELIVERED]: orderDeliveredEmail,
+    [Templates.PASSWORD_RESET]: passwordResetEmail,
   };
 
 class ResendNotificationProviderService extends AbstractNotificationProviderService {
@@ -103,6 +106,8 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
         return "Your Order Has Been Shipped";
       case Templates.ORDER_DELIVERED:
         return "Your Order Has Been Delivered";
+      case Templates.PASSWORD_RESET:
+        return "Reset your password";
       default:
         return "New Email";
     }
