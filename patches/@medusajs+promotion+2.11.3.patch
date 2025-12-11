@@ -1,0 +1,32 @@
+diff --git a/node_modules/@medusajs/promotion/dist/utils/compute-actions/build-promotion-rule-query-filter-from-context.js b/node_modules/@medusajs/promotion/dist/utils/compute-actions/build-promotion-rule-query-filter-from-context.js
+index 680140c..846c650 100644
+--- a/node_modules/@medusajs/promotion/dist/utils/compute-actions/build-promotion-rule-query-filter-from-context.js
++++ b/node_modules/@medusajs/promotion/dist/utils/compute-actions/build-promotion-rule-query-filter-from-context.js
+@@ -2,7 +2,7 @@
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.buildPromotionRuleQueryFilterFromContext = buildPromotionRuleQueryFilterFromContext;
+ const utils_1 = require("@medusajs/framework/utils");
+-const postgresql_1 = require("@mikro-orm/postgresql");
++const core_1 = require("@mikro-orm/core");
+ /**
+  * Builds a query filter for promotion rules based on the context.
+  * This is used to prefilter promotions before computing actions.
+@@ -112,7 +112,7 @@ async function buildPromotionRuleQueryFilterFromContext(context, sharedContext)
+       )
+     `.trim();
+         return {
+-            [(0, postgresql_1.raw)((alias) => noRulesSubquery(alias))]: true,
++            [(0, core_1.raw)((alias) => noRulesSubquery(alias))]: true,
+         };
+     }
+     const joinedConditions = sqlConditions.join(" OR ");
+@@ -182,7 +182,7 @@ async function buildPromotionRuleQueryFilterFromContext(context, sharedContext)
+     )
+   `.trim();
+     return {
+-        [(0, postgresql_1.raw)((alias) => antiJoinSubquery(alias))]: true,
++        [(0, core_1.raw)((alias) => antiJoinSubquery(alias))]: true,
+     };
+ }
+ //# sourceMappingURL=build-promotion-rule-query-filter-from-context.js.map
+\ No newline at end of file
