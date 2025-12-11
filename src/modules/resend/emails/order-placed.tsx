@@ -38,6 +38,11 @@ function OrderPlacedEmailComponent({
   email_banner,
   paymentProviderID = "unknown",
 }: OrderPlacedEmailProps) {
+  const btcAmount =
+    order.metadata?.amount_btc !== undefined &&
+    order.metadata?.amount_btc !== null
+      ? String(order.metadata.amount_btc)
+      : null;
   // 1. Logic for CRYPTO (Only our new provider)
   const isCrypto =
     paymentProviderID === "crypto-manual" ||
@@ -89,7 +94,7 @@ function OrderPlacedEmailComponent({
             <Row>
               <Column>
                 <Text className="text-xl font-bold m-0 tracking-wide uppercase">
-                  MEDUSA STORE
+                  Onyx Genetics Store
                 </Text>
               </Column>
               <Column align="right">
@@ -125,8 +130,12 @@ function OrderPlacedEmailComponent({
                 </Heading>
                 <Text className="text-gray-700 text-sm mb-4">
                   Please send exactly{" "}
-                  <strong>{formatPrice(order.total)}</strong> to the wallet
-                  address below:
+                  {btcAmount && btcAmount !== "0" ? (
+                    <strong>{btcAmount} BTC</strong>
+                  ) : (
+                    <strong>{formatPrice(order.total)}</strong>
+                  )}{" "}
+                  to the wallet address below:
                 </Text>
 
                 {/* BTC Wallet */}
@@ -172,7 +181,11 @@ function OrderPlacedEmailComponent({
                 <Text className="text-blue-900 text-sm mb-3">
                   To complete your payment, please send{" "}
                   <strong>{formatPrice(order.total)}</strong> via PayPal to the
-                  wallet below and include your order number in the note:
+                  wallet below.{" "}
+                  <strong>
+                    You must select "Send to friends and family" option.
+                  </strong>{" "}
+                  Do not include any additional notes or comments.
                 </Text>
                 <Section className="bg-white border border-blue-100 rounded p-3 mt-1">
                   <Text className="text-xs font-bold text-blue-800 uppercase tracking-wider m-0 mb-1">
@@ -306,13 +319,14 @@ function OrderPlacedEmailComponent({
           <Section className="bg-gray-50 p-6 mt-10">
             <Text className="text-center text-gray-500 text-sm">
               If you have any questions, reply to this email or contact our
-              support team at support@medusajs.com.
+              support team at sales@onyxgenetics.com.
             </Text>
             <Text className="text-center text-gray-500 text-sm">
               Order Token: {order.id}
             </Text>
             <Text className="text-center text-gray-400 text-xs mt-4">
-              © {new Date().getFullYear()} Medusajs, Inc. All rights reserved.
+              © {new Date().getFullYear()} Onyx Genetics, Inc. All rights
+              reserved.
             </Text>
           </Section>
         </Body>
