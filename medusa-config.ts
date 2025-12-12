@@ -19,8 +19,6 @@ module.exports = defineConfig({
   },
   admin: {
     backendUrl: process.env.MEDUSA_BACKEND_URL,
-    path: "/app",
-    outDir: "./build",
   },
   modules: [
     {
