@@ -17,6 +17,10 @@ module.exports = defineConfig({
       cookieSecret: process.env.COOKIE_SECRET || "supersecret",
     },
   },
+  admin: {
+    backendUrl: process.env.MEDUSA_BACKEND_URL,
+    path: "/app",
+  },
   modules: [
     {
       resolve: "@medusajs/medusa/payment",
@@ -76,6 +80,12 @@ module.exports = defineConfig({
             },
           },
         ],
+      },
+    },
+    {
+      resolve: "@medusajs/event-bus-redis",
+      options: {
+        redisUrl: process.env.REDIS_URL,
       },
     },
   ],
