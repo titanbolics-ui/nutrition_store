@@ -144,7 +144,7 @@ function OrderPlacedEmailComponent({
                     Bitcoin (BTC)
                   </Text>
                   <Text className="font-mono text-sm text-gray-800 break-all m-0">
-                    bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh
+                    {process.env.NEXT_PUBLIC_BTC_WALLET_ADDRESS}
                   </Text>
                 </Section>
               </Section>
@@ -192,7 +192,10 @@ function OrderPlacedEmailComponent({
                     PayPal Wallet
                   </Text>
                   <Text className="font-mono text-sm text-gray-800 break-all m-0">
-                    paypal-wallet@example.com
+                    Paypal email (COPY ONLY)
+                    <br />
+                    {process.env.NEXT_PUBLIC_PAYPAL_WALLET_ADDRESS}
+                    <br />
                   </Text>
                 </Section>
                 <Text className="text-blue-900 text-xs mt-3 m-0">

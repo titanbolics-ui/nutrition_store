@@ -13,13 +13,13 @@ export default async function resetPasswordTokenHandler({
   let urlPrefix = "";
 
   if (actor_type === "customer") {
-    urlPrefix = config.admin.storefrontUrl || "https://storefront.com";
+    urlPrefix = config.admin.storefrontUrl || "https://onyxgenetics.com";
     // TODO: replace with storefront URL
   } else {
     const backendUrl =
       config.admin.backendUrl !== "/"
         ? config.admin.backendUrl
-        : "http://localhost:9000";
+        : "http://api.onyxgenetics.com/app";
     const adminPath = config.admin.path;
     urlPrefix = `${backendUrl}${adminPath}`;
   }

@@ -48,8 +48,7 @@ export default async function orderPlacedHandler({
       );
     }
 
-    const totalUsd = totalCents / 100;
-    const btcAmount = Number((totalUsd / btcRate).toFixed(8));
+    const btcAmount = Number((totalCents / btcRate).toFixed(8));
 
     console.log(
       `⚡ Updating Order ${order.id}: ${btcAmount} BTC (Rate: ${btcRate})`
