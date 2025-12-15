@@ -35,6 +35,11 @@ module.exports = defineConfig({
             id: "paypal-manual",
             options: {},
           },
+          {
+            resolve: "./src/modules/payment/providers/cash-app",
+            id: "cash-app",
+            options: {},
+          },
         ],
       },
     },
