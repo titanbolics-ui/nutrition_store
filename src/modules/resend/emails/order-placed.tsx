@@ -38,18 +38,36 @@ function OrderPlacedEmailComponent({
   email_banner,
   paymentProviderID = "unknown",
 }: OrderPlacedEmailProps) {
+  const metaMethod = order.metadata?.payment_method as string | undefined;
+  console.log("metaMethod", metaMethod);
+  // 1. Logic for CRYPTO (Only our new provider)
+  const isCrypto =
+    paymentProviderID === "crypto-manual" ||
+    paymentProviderID === "pp_crypto-manual_crypto-manual" ||
+    metaMethod === "BTC" ||
+    metaMethod === "CRYPTO";
+
+  // 2. Logic for STANDARD MANUAL (pp_system_default) PayPal
+  const isManualSystem =
+    paymentProviderID === "pp_system_default" ||
+    paymentProviderID === "manual" || // <--- ДОДАВ ЦЕ (важливо для Draft Orders)
+    metaMethod === "MANUAL";
+
+  const isCashApp =
+    paymentProviderID === "cash-app" ||
+    paymentProviderID === "pp_cash-app_cash-app" ||
+    metaMethod === "CASHAPP";
+
+  const isPayPal =
+    paymentProviderID === "paypal-manual" ||
+    paymentProviderID === "pp_paypal-manual_paypal-manual" ||
+    metaMethod === "PAYPAL";
+
   const btcAmount =
     order.metadata?.amount_btc !== undefined &&
     order.metadata?.amount_btc !== null
       ? String(order.metadata.amount_btc)
       : null;
-  // 1. Logic for CRYPTO (Only our new provider)
-  const isCrypto =
-    paymentProviderID === "crypto-manual" ||
-    paymentProviderID === "pp_crypto-manual_crypto-manual";
-
-  // 2. Logic for STANDARD MANUAL (pp_system_default) PayPal
-  const isManualSystem = paymentProviderID === "pp_system_default";
 
   const shouldDisplayBanner = email_banner && "title" in email_banner;
 
@@ -78,6 +96,7 @@ function OrderPlacedEmailComponent({
               brand: "#27272a",
               btc: "#F7931A",
               usdt: "#26A17B",
+              cashapp: "#00D632",
             },
           },
         },
@@ -157,13 +176,12 @@ function OrderPlacedEmailComponent({
                   ℹ️ Manual Payment (Default)
                 </Heading>
                 <Text className="text-blue-900 text-sm m-0 mb-4">
-                  This order was placed using the default System Provider (
-                  <b>pp_system_default</b>).
+                  This order was placed using the default System Provider
                 </Text>
                 <Section className="bg-white/50 border border-blue-100 rounded p-3">
                   <Text className="text-xs text-blue-800 m-0">
                     If this is a real order, please contact support for payment
-                    details (Bank Transfer / Zelle).
+                    details (Crypto / PayPal / Cash App).
                     <br />
                     <br />
                     <i>(Admin Note: This is separate from the Crypto logic)</i>
@@ -171,7 +189,7 @@ function OrderPlacedEmailComponent({
                 </Section>
               </Section>
             </Container>
-          ) : (
+          ) : isPayPal ? (
             /* VARIANT 3: DEFAULT (Blue + PayPal) */
             <Container className="px-8 mb-8">
               <Section className="bg-blue-50 border border-blue-200 rounded-lg p-6">
@@ -203,7 +221,108 @@ function OrderPlacedEmailComponent({
                 </Text>
               </Section>
             </Container>
-          )}
+          ) : isCashApp ? (
+            /* VARIANT 4: CASH APP (Green) */
+            <Container className="px-8 mb-8">
+              <Section className="bg-[#f0fdf4] border border-green-200 rounded-lg p-6">
+                <Row className="mb-4">
+                  <Column>
+                    <Heading className="text-xl font-bold text-gray-800 m-0 flex items-center">
+                      <span className="text-cashapp mr-2">●</span> Pay via Cash
+                      App
+                    </Heading>
+                  </Column>
+                  <Column align="right">
+                    {/* Можна вставити лого Cash App картинкою, якщо є */}
+                    <Text className="text-xs font-bold text-gray-400 m-0">
+                      FASTEST METHOD
+                    </Text>
+                  </Column>
+                </Row>
+
+                <Text className="text-gray-800 text-sm mb-4 font-medium">
+                  Complete your order in 60 seconds using Bitcoin on Cash App.
+                </Text>
+
+                {/* STEPS FOR DUMMIES (FIXED ALIGNMENT) */}
+                <Section className="bg-white border border-green-100 rounded-lg p-4 mb-4">
+                  {/* Step 1 */}
+                  <Row className="mb-3">
+                    {/* Додали pt-1, щоб опустити кружечок на рівень тексту */}
+                    <Column className="w-8 align-top pt-1">
+                      <div className="bg-cashapp text-white rounded-full w-6 h-6 text-center leading-[24px] text-xs font-bold block">
+                        1
+                      </div>
+                    </Column>
+                    <Column>
+                      <Text className="text-sm text-gray-600 m-0 leading-6">
+                        Open <strong>Cash App</strong> and tap the{" "}
+                        <strong>"Bitcoin"</strong> tab.
+                      </Text>
+                    </Column>
+                  </Row>
+
+                  {/* Step 2 */}
+                  <Row className="mb-3">
+                    <Column className="w-8 align-top pt-1">
+                      <div className="bg-cashapp text-white rounded-full w-6 h-6 text-center leading-[24px] text-xs font-bold block">
+                        2
+                      </div>
+                    </Column>
+                    <Column>
+                      <Text className="text-sm text-gray-600 m-0 leading-6">
+                        Buy <strong>{formatPrice(order.total)}</strong> worth of
+                        BTC.
+                      </Text>
+                    </Column>
+                  </Row>
+
+                  {/* Step 3 */}
+                  <Row className="mb-3">
+                    <Column className="w-8 align-top pt-1">
+                      <div className="bg-cashapp text-white rounded-full w-6 h-6 text-center leading-[24px] text-xs font-bold block">
+                        3
+                      </div>
+                    </Column>
+                    <Column>
+                      <Text className="text-sm text-gray-600 m-0 leading-6">
+                        Tap the <strong>"Paper Airplane"</strong> (Send) icon.
+                      </Text>
+                    </Column>
+                  </Row>
+
+                  {/* Step 4 */}
+                  <Row>
+                    <Column className="w-8 align-top pt-1">
+                      <div className="bg-cashapp text-white rounded-full w-6 h-6 text-center leading-[24px] text-xs font-bold block">
+                        4
+                      </div>
+                    </Column>
+                    <Column>
+                      <Text className="text-sm text-gray-600 m-0 leading-6">
+                        Copy the address below and paste it in the "To" field.
+                      </Text>
+                    </Column>
+                  </Row>
+                </Section>
+
+                {/* WALLET ADDRESS BOX */}
+                <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider m-0 mb-2">
+                  Copy this address:
+                </Text>
+                <Section className="bg-white border-2 border-dashed border-gray-300 rounded p-4 text-center">
+                  <Text className="font-mono text-sm text-gray-800 break-all m-0 select-all">
+                    {process.env.NEXT_PUBLIC_BTC_WALLET_ADDRESS}
+                  </Text>
+                </Section>
+
+                <Text className="text-xs text-center text-gray-400 mt-2">
+                  Order status will update automatically once payment is
+                  detected.
+                </Text>
+              </Section>
+            </Container>
+          ) : null}
 
           {/* 👆 END OF LOGIC BLOCK 👆 */}
 
