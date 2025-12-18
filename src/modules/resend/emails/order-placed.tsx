@@ -96,7 +96,7 @@ function OrderPlacedEmailComponent({
               brand: "#27272a",
               btc: "#F7931A",
               usdt: "#26A17B",
-              cashapp: "#00D632",
+              cashapp: "#059669",
             },
           },
         },
@@ -248,10 +248,10 @@ function OrderPlacedEmailComponent({
                 <Section className="bg-white border border-green-100 rounded-lg p-4 mb-4">
                   {/* Step 1 */}
                   <Row className="mb-3">
-                    <Column className="w-8 align-top pt-1">
-                      <div className="bg-cashapp text-white rounded-full w-6 h-6 text-center leading-[24px] text-xs font-bold block">
-                        1
-                      </div>
+                    <Column className="w-8 align-top">
+                      <Text className="text-base font-bold text-gray-800 m-0">
+                        1.
+                      </Text>
                     </Column>
                     <Column>
                       <Text className="text-sm text-gray-600 m-0 leading-6">
@@ -263,10 +263,10 @@ function OrderPlacedEmailComponent({
 
                   {/* Step 2 */}
                   <Row className="mb-3">
-                    <Column className="w-8 align-top pt-1">
-                      <div className="bg-cashapp text-white rounded-full w-6 h-6 text-center leading-[24px] text-xs font-bold block">
-                        2
-                      </div>
+                    <Column className="w-8 align-top">
+                      <Text className="text-base font-bold text-gray-800 m-0">
+                        2.
+                      </Text>
                     </Column>
                     <Column>
                       <Text className="text-sm text-gray-600 m-0 leading-6">
@@ -278,10 +278,10 @@ function OrderPlacedEmailComponent({
 
                   {/* Step 3 */}
                   <Row className="mb-3">
-                    <Column className="w-8 align-top pt-1">
-                      <div className="bg-cashapp text-white rounded-full w-6 h-6 text-center leading-[24px] text-xs font-bold block">
-                        3
-                      </div>
+                    <Column className="w-8 align-top">
+                      <Text className="text-base font-bold text-gray-800 m-0">
+                        3.
+                      </Text>
                     </Column>
                     <Column>
                       <Text className="text-sm text-gray-600 m-0 leading-6">
@@ -292,10 +292,10 @@ function OrderPlacedEmailComponent({
 
                   {/* Step 4 */}
                   <Row>
-                    <Column className="w-8 align-top pt-1">
-                      <div className="bg-cashapp text-white rounded-full w-6 h-6 text-center leading-[24px] text-xs font-bold block">
-                        4
-                      </div>
+                    <Column className="w-8 align-top">
+                      <Text className="text-base font-bold text-gray-800 m-0">
+                        4.
+                      </Text>
                     </Column>
                     <Column>
                       <Text className="text-sm text-gray-600 m-0 leading-6">
@@ -369,22 +369,41 @@ function OrderPlacedEmailComponent({
               </Column>
             </Row>
             {order.items?.map((item) => (
-              <Section key={item.id} className="border-b border-gray-200 py-4">
+              <Section key={item.id} className="border-b border-gray-100 py-4">
                 <Row>
-                  <Column className="w-1/3">
+                  {/* 1. Thumbnail (W-16 ~ 64px) */}
+                  <Column className="w-[64px] align-top pr-4">
                     <Img
                       src={item.thumbnail ?? ""}
                       alt={item.product_title ?? ""}
-                      className="rounded-lg"
-                      width="100%"
+                      className="rounded bg-gray-100 object-cover"
+                      width="64"
+                      height="64"
                     />
                   </Column>
-                  <Column className="w-2/3 pl-4">
-                    <Text className="text-lg font-semibold text-gray-800">
+
+                  {/* 2. Product Details */}
+                  <Column className="align-top">
+                    <Text className="text-sm font-semibold text-gray-900 m-0 mb-1 leading-tight">
                       {item.product_title}
                     </Text>
-                    <Text className="text-gray-600">{item.variant_title}</Text>
-                    <Text className="text-gray-800 mt-2 font-bold">
+                    <Text className="text-xs text-gray-500 m-0">
+                      {item.variant_title}
+                    </Text>
+                  </Column>
+
+                  {/* 3. Price & Quantity (Right Aligned) */}
+                  <Column className="align-top text-right w-[100px]">
+                    {/* Quantity x Unit Price */}
+                    <Text className="text-xs text-gray-500 m-0 mb-1">
+                      <span className="font-medium text-gray-800">
+                        {item.quantity}
+                      </span>{" "}
+                      x {formatPrice(item.unit_price)}
+                    </Text>
+
+                    {/* Total Line Price */}
+                    <Text className="text-sm font-bold text-gray-900 m-0">
                       {formatPrice(item.total)}
                     </Text>
                   </Column>
