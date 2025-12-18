@@ -70,7 +70,7 @@ function OrderFulfilledEmailComponent({ order }: OrderFulfilledEmailProps) {
     >
       <Html className="font-sans bg-gray-100">
         <Head />
-        <Preview>{`Your order #${order.display_id} is being prepared`}</Preview>
+        <Preview>{`Your order #ONX-${order.display_id} is being prepared`}</Preview>
         <Body className="bg-white my-10 mx-auto w-full max-w-2xl shadow-sm rounded-md overflow-hidden">
           {/* Header */}
           <Section className="bg-brand text-white px-6 py-6">
@@ -82,7 +82,7 @@ function OrderFulfilledEmailComponent({ order }: OrderFulfilledEmailProps) {
               </Column>
               <Column align="right">
                 <Text className="text-gray-400 text-xs m-0">
-                  Order #{order.display_id}
+                  Order #ONX-{order.display_id}
                 </Text>
               </Column>
             </Row>
@@ -104,7 +104,7 @@ function OrderFulfilledEmailComponent({ order }: OrderFulfilledEmailProps) {
               Hi {order.shipping_address?.first_name || "Customer"},
             </Text>
             <Text className="text-gray-600 text-base leading-relaxed m-0 mb-6">
-              Your order <strong>#{order.display_id}</strong> is now in the
+              Your order <strong>#ONX-{order.display_id}</strong> is now in the
               fulfillment stage. We&apos;ll send you another email as soon as it
               ships.
             </Text>

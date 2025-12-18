@@ -72,7 +72,7 @@ function OrderPaidEmailComponent({ order }: OrderPaidEmailProps) {
     >
       <Html className="font-sans bg-gray-100">
         <Head />
-        <Preview>{`Payment Received for Order #${order.display_id}`}</Preview>
+        <Preview>{`Payment Received for Order #ONX-${order.display_id}`}</Preview>
         <Body className="bg-white my-10 mx-auto w-full max-w-2xl shadow-sm rounded-md overflow-hidden">
           {/* Header */}
           <Section className="bg-brand text-white px-6 py-6">
@@ -84,7 +84,7 @@ function OrderPaidEmailComponent({ order }: OrderPaidEmailProps) {
               </Column>
               <Column align="right">
                 <Text className="text-gray-400 text-xs m-0">
-                  Order #{order.display_id}
+                  Order #ONX-{order.display_id}
                 </Text>
               </Column>
             </Row>
@@ -111,7 +111,7 @@ function OrderPaidEmailComponent({ order }: OrderPaidEmailProps) {
             </Text>
             <Text className="text-gray-600 text-base leading-relaxed m-0 mb-6">
               Good news! Your payment for order{" "}
-              <strong>#{order.display_id}</strong> has been successfully
+              <strong>#ONX-{order.display_id}</strong> has been successfully
               verified. We are now preparing your items for discreet shipping.
             </Text>
 
