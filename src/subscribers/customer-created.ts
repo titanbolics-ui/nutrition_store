@@ -9,7 +9,6 @@ export default async function handleCustomerCreated({
   event,
   container,
 }: SubscriberArgs<{ id: string }>) {
-  // Отримуємо сервіс клієнтів, щоб дізнатися деталі (email, ім'я)
   const remoteQuery = container.resolve(ContainerRegistrationKeys.REMOTE_QUERY);
 
   const customerResult = await remoteQuery({
@@ -59,7 +58,6 @@ export default async function handleCustomerCreated({
   }
 }
 
-// Конфігурація: слухаємо подію створення клієнта
 export const config: SubscriberConfig = {
   event: "customer.created",
 };

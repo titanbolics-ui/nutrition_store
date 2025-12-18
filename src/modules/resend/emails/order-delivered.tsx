@@ -77,7 +77,7 @@ function OrderDeliveredEmailComponent({ order }: OrderDeliveredEmailProps) {
             <Row>
               <Column>
                 <Text className="text-xl font-bold m-0 tracking-wide uppercase">
-                  MEDUSA STORE
+                  Onyx Genetics Store
                 </Text>
               </Column>
               <Column align="right">
@@ -142,7 +142,8 @@ function OrderDeliveredEmailComponent({ order }: OrderDeliveredEmailProps) {
           {/* Footer */}
           <Section className="bg-gray-50 p-8 mt-4 border-t border-gray-100">
             <Text className="text-center text-gray-400 text-xs">
-              © {new Date().getFullYear()} Medusa Store. All rights reserved.
+              © {new Date().getFullYear()} Onyx Genetics Store. All rights
+              reserved.
             </Text>
           </Section>
         </Body>
@@ -156,8 +157,3 @@ export const orderDeliveredEmail = (props: OrderDeliveredEmailProps) => (
 );
 
 export default OrderDeliveredEmailComponent;
-
-
-
-
-

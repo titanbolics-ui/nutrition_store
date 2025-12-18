@@ -50,7 +50,7 @@ function OrderPlacedEmailComponent({
   // 2. Logic for STANDARD MANUAL (pp_system_default) PayPal
   const isManualSystem =
     paymentProviderID === "pp_system_default" ||
-    paymentProviderID === "manual" || // <--- ДОДАВ ЦЕ (важливо для Draft Orders)
+    paymentProviderID === "manual" ||
     metaMethod === "MANUAL";
 
   const isCashApp =
@@ -248,7 +248,6 @@ function OrderPlacedEmailComponent({
                 <Section className="bg-white border border-green-100 rounded-lg p-4 mb-4">
                   {/* Step 1 */}
                   <Row className="mb-3">
-                    {/* Додали pt-1, щоб опустити кружечок на рівень тексту */}
                     <Column className="w-8 align-top pt-1">
                       <div className="bg-cashapp text-white rounded-full w-6 h-6 text-center leading-[24px] text-xs font-bold block">
                         1

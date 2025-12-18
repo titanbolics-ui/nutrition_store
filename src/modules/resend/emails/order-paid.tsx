@@ -55,7 +55,7 @@ function OrderPaidEmailComponent({ order }: OrderPaidEmailProps) {
     return String(price ?? "");
   };
 
-  const orderDetailsUrl = `http://localhost:8000/us/account/orders/details/${order.id}`;
+  const orderDetailsUrl = `${process.env.STORE_URL}us/account/orders/details/${order.id}`;
 
   return (
     <Tailwind
@@ -64,7 +64,7 @@ function OrderPaidEmailComponent({ order }: OrderPaidEmailProps) {
           extend: {
             colors: {
               brand: "#27272a",
-              success: "#10b981", // Зелений
+              success: "#10b981",
             },
           },
         },
@@ -79,7 +79,7 @@ function OrderPaidEmailComponent({ order }: OrderPaidEmailProps) {
             <Row>
               <Column>
                 <Text className="text-xl font-bold m-0 tracking-wide uppercase">
-                  MEDUSA STORE
+                  Onyx Genetics Store
                 </Text>
               </Column>
               <Column align="right">
@@ -156,7 +156,8 @@ function OrderPaidEmailComponent({ order }: OrderPaidEmailProps) {
           {/* Footer */}
           <Section className="bg-gray-50 p-8 mt-4 border-t border-gray-100">
             <Text className="text-center text-gray-400 text-xs">
-              © {new Date().getFullYear()} Medusa Store. All rights reserved.
+              © {new Date().getFullYear()} Onyx Genetics Store. All rights
+              reserved.
             </Text>
           </Section>
         </Body>
