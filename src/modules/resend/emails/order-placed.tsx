@@ -39,7 +39,7 @@ function OrderPlacedEmailComponent({
   paymentProviderID = "unknown",
 }: OrderPlacedEmailProps) {
   const metaMethod = order.metadata?.payment_method as string | undefined;
-  console.log("metaMethod", metaMethod);
+
   // 1. Logic for CRYPTO (Only our new provider)
   const isCrypto =
     paymentProviderID === "crypto-manual" ||
@@ -50,7 +50,7 @@ function OrderPlacedEmailComponent({
   // 2. Logic for STANDARD MANUAL (pp_system_default) PayPal
   const isManualSystem =
     paymentProviderID === "pp_system_default" ||
-    paymentProviderID === "manual" || // <--- ДОДАВ ЦЕ (важливо для Draft Orders)
+    paymentProviderID === "manual" ||
     metaMethod === "MANUAL";
 
   const isCashApp =
@@ -105,7 +105,7 @@ function OrderPlacedEmailComponent({
       <Html className="font-sans bg-gray-100">
         <Head />
         {/* Using a template string to avoid type errors */}
-        <Preview>{`Order Confirmation #${order.display_id}`}</Preview>
+        <Preview>{`Order Confirmation #ONX-${order.display_id}`}</Preview>
 
         <Body className="bg-white my-10 mx-auto w-full max-w-2xl shadow-sm rounded-md overflow-hidden">
           {/* Header */}
@@ -118,7 +118,7 @@ function OrderPlacedEmailComponent({
               </Column>
               <Column align="right">
                 <Text className="text-gray-400 text-xs m-0">
-                  Order #{order.display_id}
+                  Order #ONX-{order.display_id}
                 </Text>
               </Column>
             </Row>
@@ -217,7 +217,7 @@ function OrderPlacedEmailComponent({
                   </Text>
                 </Section>
                 <Text className="text-blue-900 text-xs mt-3 m-0">
-                  Order reference: <strong>#{order.display_id}</strong>
+                  Order reference: <strong>#ONX-{order.display_id}</strong>
                 </Text>
               </Section>
             </Container>
@@ -248,7 +248,6 @@ function OrderPlacedEmailComponent({
                 <Section className="bg-white border border-green-100 rounded-lg p-4 mb-4">
                   {/* Step 1 */}
                   <Row className="mb-3">
-                    {/* Додали pt-1, щоб опустити кружечок на рівень тексту */}
                     <Column className="w-8 align-top pt-1">
                       <div className="bg-cashapp text-white rounded-full w-6 h-6 text-center leading-[24px] text-xs font-bold block">
                         1
@@ -365,7 +364,7 @@ function OrderPlacedEmailComponent({
             <Row>
               <Column>
                 <Text className="text-sm m-0 my-2 text-gray-500">
-                  Order ID: #{order.display_id}
+                  Order ID: #ONX-{order.display_id}
                 </Text>
               </Column>
             </Row>

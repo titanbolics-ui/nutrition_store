@@ -2,8 +2,6 @@ import { SubscriberArgs, type SubscriberConfig } from "@medusajs/medusa";
 import { Modules, ContainerRegistrationKeys } from "@medusajs/utils";
 import { INotificationModuleService } from "@medusajs/types";
 
-console.log("✅ Subscriber 'payment-captured' file loaded!");
-
 export default async function paymentCapturedHandler({
   event,
   container,
