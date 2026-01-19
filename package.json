@@ -33,6 +33,7 @@
     "@medusajs/draft-order": "2.11.3",
     "@medusajs/file-s3": "2.11.3",
     "@medusajs/framework": "2.11.3",
+    "@medusajs/js-sdk": "^2.12.5",
     "@medusajs/medusa": "2.11.3",
     "@medusajs/ui": "^4.0.27",
     "@react-email/components": "^1.0.1",
