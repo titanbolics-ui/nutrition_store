@@ -14,6 +14,7 @@ import { orderFulfilledEmail } from "./emails/order-fulfilled";
 import { orderShippedEmail } from "./emails/order-shipped";
 import { orderDeliveredEmail } from "./emails/order-delivered";
 import { passwordResetEmail } from "./emails/password-reset";
+import { abandonedCartEmail } from "./emails/abandoned-cart";
 
 type ResendOptions = {
   api_key: string;
@@ -38,6 +39,7 @@ enum Templates {
   ORDER_SHIPPED = "order-shipped",
   ORDER_DELIVERED = "order-delivered",
   PASSWORD_RESET = "password-reset",
+  ABANDONED_CART = "abandoned-cart",
 }
 
 const templates: { [key in Templates]?: (props: unknown) => React.ReactNode } =
@@ -48,6 +50,7 @@ const templates: { [key in Templates]?: (props: unknown) => React.ReactNode } =
     [Templates.ORDER_SHIPPED]: orderShippedEmail,
     [Templates.ORDER_DELIVERED]: orderDeliveredEmail,
     [Templates.PASSWORD_RESET]: passwordResetEmail,
+    [Templates.ABANDONED_CART]: abandonedCartEmail,
   };
 
 class ResendNotificationProviderService extends AbstractNotificationProviderService {
@@ -108,6 +111,8 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
         return "Your Order Has Been Delivered";
       case Templates.PASSWORD_RESET:
         return "Reset your password";
+      case Templates.ABANDONED_CART:
+        return "[Onyx Genetics] Your research stack is reserved for dispatch 🧬";
       default:
         return "New Email";
     }
