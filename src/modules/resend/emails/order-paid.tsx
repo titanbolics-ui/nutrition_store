@@ -13,7 +13,7 @@ import {
   Column,
   Link,
 } from "@react-email/components";
-import { BigNumberValue, OrderDTO } from "@medusajs/framework/types";
+import { BigNumberValue, OrderDTO } from "@medusajs/types";
 import * as React from "react";
 
 type OrderPaidEmailProps = {
@@ -55,7 +55,7 @@ function OrderPaidEmailComponent({ order }: OrderPaidEmailProps) {
     return String(price ?? "");
   };
 
-  const orderDetailsUrl = `${process.env.STORE_URL}us/account/orders/details/${order.id}`;
+  const orderDetailsUrl = `${process.env.STORE_URL}/us/account/orders/details/${order.id}`;
 
   return (
     <Tailwind

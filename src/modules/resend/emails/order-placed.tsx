@@ -18,7 +18,7 @@ import {
   BigNumberValue,
   CustomerDTO,
   OrderDTO,
-} from "@medusajs/framework/types";
+} from "@medusajs/types";
 import * as React from "react";
 
 type OrderPlacedEmailProps = {
@@ -33,6 +33,167 @@ type OrderPlacedEmailProps = {
   paymentProviderID?: string;
 };
 
+type PaymentInstructionProps = {
+  order: OrderDTO;
+  formatPrice: (price: BigNumberValue) => string;
+  btcAmount: string | null;
+};
+
+// Payment Confirmation Request Component
+const PaymentConfirmationSection = () => (
+  <Container className="px-8 mb-8">
+    <Section className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+      <Heading className="text-lg font-bold text-yellow-800 m-0 mb-3">
+        📸 Payment Confirmation Required
+      </Heading>
+      <Text className="text-gray-700 text-sm mb-2">
+        Once you've completed the payment, please reply to this email with a screenshot or proof of payment. This helps us process your order faster.
+      </Text>
+      <Text className="text-xs text-gray-600 m-0">
+        Simply hit "Reply" and attach your payment screenshot.
+      </Text>
+    </Section>
+  </Container>
+);
+
+// Wallet Display Component
+const WalletAddress = ({ label, address, colorClass = "text-gray-800" }: { label: string; address: string; colorClass?: string }) => (
+  <Section className="bg-white border border-gray-200 rounded p-3">
+    <Text className={`text-xs font-bold uppercase tracking-wider m-0 mb-1 ${colorClass}`}>
+      {label}
+    </Text>
+    <Text className="font-mono text-sm text-gray-800 break-all m-0">
+      {address}
+    </Text>
+  </Section>
+);
+
+// Crypto Payment Instructions
+const CryptoPaymentInstructions = ({ order, formatPrice, btcAmount }: PaymentInstructionProps) => (
+  <Container className="px-8 mb-8">
+    <Section className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+      <Heading className="text-lg font-bold text-orange-800 m-0 mb-3">
+        ₿ Crypto Payment Required
+      </Heading>
+      <Text className="text-gray-700 text-sm mb-4">
+        Please send exactly{" "}
+        {btcAmount && btcAmount !== "0" ? (
+          <strong>{btcAmount} BTC</strong>
+        ) : (
+          <strong>{formatPrice(order.total)}</strong>
+        )}{" "}
+        to the wallet address below:
+      </Text>
+      <WalletAddress 
+        label="Bitcoin (BTC)" 
+        address={process.env.NEXT_PUBLIC_BTC_WALLET_ADDRESS || ""} 
+        colorClass="text-btc"
+      />
+    </Section>
+  </Container>
+);
+
+// Manual/System Payment Instructions
+const ManualPaymentInstructions = () => (
+  <Container className="px-8 mb-8">
+    <Section className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+      <Heading className="text-lg font-bold text-blue-800 m-0 mb-2">
+        ℹ️ Manual Payment (Default)
+      </Heading>
+      <Text className="text-blue-900 text-sm m-0 mb-4">
+        This order was placed using the default System Provider
+      </Text>
+      <Section className="bg-white/50 border border-blue-100 rounded p-3">
+        <Text className="text-xs text-blue-800 m-0">
+          If this is a real order, please contact support for payment details (Crypto / PayPal / Cash App).
+          <br /><br />
+          <i>(Admin Note: This is separate from the Crypto logic)</i>
+        </Text>
+      </Section>
+    </Section>
+  </Container>
+);
+
+// PayPal Payment Instructions
+const PayPalPaymentInstructions = ({ order, formatPrice }: PaymentInstructionProps) => (
+  <Container className="px-8 mb-8">
+    <Section className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+      <Heading className="text-lg font-bold text-blue-800 m-0 mb-3">
+        💳 PayPal Payment Instructions
+      </Heading>
+      <Text className="text-blue-900 text-sm mb-3">
+        To complete your payment, please send{" "}
+        <strong>{formatPrice(order.total)}</strong> via PayPal to the wallet below.{" "}
+        <strong>You must select "Send to friends and family" option.</strong>{" "}
+        Do not include any additional notes or comments.
+      </Text>
+      <WalletAddress 
+        label="PayPal Wallet" 
+        address={`Paypal email (COPY ONLY)\n${process.env.NEXT_PUBLIC_PAYPAL_WALLET_ADDRESS || ""}`}
+        colorClass="text-blue-800"
+      />
+      <Text className="text-blue-900 text-xs mt-3 m-0">
+        Order reference: <strong>#ONX-{order.display_id}</strong>
+      </Text>
+    </Section>
+  </Container>
+);
+
+// Cash App Payment Instructions
+const CashAppPaymentInstructions = ({ order, formatPrice }: PaymentInstructionProps) => (
+  <Container className="px-8 mb-8">
+    <Section className="bg-[#f0fdf4] border border-green-200 rounded-lg p-6">
+      <Row className="mb-4">
+        <Column>
+          <Heading className="text-xl font-bold text-gray-800 m-0 flex items-center">
+            <span className="text-cashapp mr-2">●</span> Pay via Cash App
+          </Heading>
+        </Column>
+        <Column align="right">
+          <Text className="text-xs font-bold text-gray-400 m-0">
+            FASTEST METHOD
+          </Text>
+        </Column>
+      </Row>
+
+      <Text className="text-gray-800 text-sm mb-4 font-medium">
+        Complete your order in 60 seconds using Bitcoin on Cash App.
+      </Text>
+
+      <Section className="bg-white border border-green-100 rounded-lg p-4 mb-4">
+        {[
+          { num: 1, text: 'Open Cash App and tap the "Bitcoin" tab.' },
+          { num: 2, text: `Buy ${formatPrice(order.total)} worth of BTC.` },
+          { num: 3, text: 'Tap the "Paper Airplane" (Send) icon.' },
+          { num: 4, text: 'Copy the address below and paste it in the "To" field.' },
+        ].map(({ num, text }) => (
+          <Row key={num} className={num < 4 ? "mb-3" : ""}>
+            <Column className="w-8 align-top">
+              <Text className="text-base font-bold text-gray-800 m-0">{num}.</Text>
+            </Column>
+            <Column>
+              <Text className="text-sm text-gray-600 m-0 leading-6" dangerouslySetInnerHTML={{ __html: text }} />
+            </Column>
+          </Row>
+        ))}
+      </Section>
+
+      <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider m-0 mb-2">
+        Copy this address:
+      </Text>
+      <Section className="bg-white border-2 border-dashed border-gray-300 rounded p-4 text-center">
+        <Text className="font-mono text-sm text-gray-800 break-all m-0 select-all">
+          {process.env.NEXT_PUBLIC_BTC_WALLET_ADDRESS}
+        </Text>
+      </Section>
+
+      <Text className="text-xs text-center text-gray-400 mt-2">
+        Order status will update automatically once payment is detected.
+      </Text>
+    </Section>
+  </Container>
+);
+
 function OrderPlacedEmailComponent({
   order,
   email_banner,
@@ -40,14 +201,13 @@ function OrderPlacedEmailComponent({
 }: OrderPlacedEmailProps) {
   const metaMethod = order.metadata?.payment_method as string | undefined;
 
-  // 1. Logic for CRYPTO (Only our new provider)
+  // Payment type detection
   const isCrypto =
     paymentProviderID === "crypto-manual" ||
     paymentProviderID === "pp_crypto-manual_crypto-manual" ||
     metaMethod === "BTC" ||
     metaMethod === "CRYPTO";
 
-  // 2. Logic for STANDARD MANUAL (pp_system_default) PayPal
   const isManualSystem =
     paymentProviderID === "pp_system_default" ||
     paymentProviderID === "manual" ||
@@ -138,192 +298,14 @@ function OrderPlacedEmailComponent({
             </Text>
           </Container>
 
-          {/* 👇 MAIN LOGIC FOR BLOCK DISPLAY 👇 */}
+          {/* Payment Instructions */}
+          {isCrypto && <CryptoPaymentInstructions order={order} formatPrice={formatPrice} btcAmount={btcAmount} />}
+          {isManualSystem && <ManualPaymentInstructions />}
+          {isPayPal && <PayPalPaymentInstructions order={order} formatPrice={formatPrice} btcAmount={btcAmount} />}
+          {isCashApp && <CashAppPaymentInstructions order={order} formatPrice={formatPrice} btcAmount={btcAmount} />}
 
-          {/* VARIANT 1: CRYPTO (Orange, only BTC) */}
-          {isCrypto ? (
-            <Container className="px-8 mb-8">
-              <Section className="bg-orange-50 border border-orange-200 rounded-lg p-6">
-                <Heading className="text-lg font-bold text-orange-800 m-0 mb-3 flex items-center">
-                  ₿ Crypto Payment Required
-                </Heading>
-                <Text className="text-gray-700 text-sm mb-4">
-                  Please send exactly{" "}
-                  {btcAmount && btcAmount !== "0" ? (
-                    <strong>{btcAmount} BTC</strong>
-                  ) : (
-                    <strong>{formatPrice(order.total)}</strong>
-                  )}{" "}
-                  to the wallet address below:
-                </Text>
-
-                {/* BTC Wallet */}
-                <Section className="bg-white border border-gray-200 rounded p-3">
-                  <Text className="text-xs font-bold text-btc uppercase tracking-wider m-0 mb-1">
-                    Bitcoin (BTC)
-                  </Text>
-                  <Text className="font-mono text-sm text-gray-800 break-all m-0">
-                    {process.env.NEXT_PUBLIC_BTC_WALLET_ADDRESS}
-                  </Text>
-                </Section>
-              </Section>
-            </Container>
-          ) : /* VARIANT 2: SYSTEM MANUAL / TEST (Blue) */
-          isManualSystem ? (
-            <Container className="px-8 mb-8">
-              <Section className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <Heading className="text-lg font-bold text-blue-800 m-0 mb-2">
-                  ℹ️ Manual Payment (Default)
-                </Heading>
-                <Text className="text-blue-900 text-sm m-0 mb-4">
-                  This order was placed using the default System Provider
-                </Text>
-                <Section className="bg-white/50 border border-blue-100 rounded p-3">
-                  <Text className="text-xs text-blue-800 m-0">
-                    If this is a real order, please contact support for payment
-                    details (Crypto / PayPal / Cash App).
-                    <br />
-                    <br />
-                    <i>(Admin Note: This is separate from the Crypto logic)</i>
-                  </Text>
-                </Section>
-              </Section>
-            </Container>
-          ) : isPayPal ? (
-            /* VARIANT 3: DEFAULT (Blue + PayPal) */
-            <Container className="px-8 mb-8">
-              <Section className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <Heading className="text-lg font-bold text-blue-800 m-0 mb-3">
-                  💳 PayPal Payment Instructions
-                </Heading>
-                <Text className="text-blue-900 text-sm mb-3">
-                  To complete your payment, please send{" "}
-                  <strong>{formatPrice(order.total)}</strong> via PayPal to the
-                  wallet below.{" "}
-                  <strong>
-                    You must select "Send to friends and family" option.
-                  </strong>{" "}
-                  Do not include any additional notes or comments.
-                </Text>
-                <Section className="bg-white border border-blue-100 rounded p-3 mt-1">
-                  <Text className="text-xs font-bold text-blue-800 uppercase tracking-wider m-0 mb-1">
-                    PayPal Wallet
-                  </Text>
-                  <Text className="font-mono text-sm text-gray-800 break-all m-0">
-                    Paypal email (COPY ONLY)
-                    <br />
-                    {process.env.NEXT_PUBLIC_PAYPAL_WALLET_ADDRESS}
-                    <br />
-                  </Text>
-                </Section>
-                <Text className="text-blue-900 text-xs mt-3 m-0">
-                  Order reference: <strong>#ONX-{order.display_id}</strong>
-                </Text>
-              </Section>
-            </Container>
-          ) : isCashApp ? (
-            /* VARIANT 4: CASH APP (Green) */
-            <Container className="px-8 mb-8">
-              <Section className="bg-[#f0fdf4] border border-green-200 rounded-lg p-6">
-                <Row className="mb-4">
-                  <Column>
-                    <Heading className="text-xl font-bold text-gray-800 m-0 flex items-center">
-                      <span className="text-cashapp mr-2">●</span> Pay via Cash
-                      App
-                    </Heading>
-                  </Column>
-                  <Column align="right">
-                    {/* Можна вставити лого Cash App картинкою, якщо є */}
-                    <Text className="text-xs font-bold text-gray-400 m-0">
-                      FASTEST METHOD
-                    </Text>
-                  </Column>
-                </Row>
-
-                <Text className="text-gray-800 text-sm mb-4 font-medium">
-                  Complete your order in 60 seconds using Bitcoin on Cash App.
-                </Text>
-
-                {/* STEPS FOR DUMMIES (FIXED ALIGNMENT) */}
-                <Section className="bg-white border border-green-100 rounded-lg p-4 mb-4">
-                  {/* Step 1 */}
-                  <Row className="mb-3">
-                    <Column className="w-8 align-top">
-                      <Text className="text-base font-bold text-gray-800 m-0">
-                        1.
-                      </Text>
-                    </Column>
-                    <Column>
-                      <Text className="text-sm text-gray-600 m-0 leading-6">
-                        Open <strong>Cash App</strong> and tap the{" "}
-                        <strong>"Bitcoin"</strong> tab.
-                      </Text>
-                    </Column>
-                  </Row>
-
-                  {/* Step 2 */}
-                  <Row className="mb-3">
-                    <Column className="w-8 align-top">
-                      <Text className="text-base font-bold text-gray-800 m-0">
-                        2.
-                      </Text>
-                    </Column>
-                    <Column>
-                      <Text className="text-sm text-gray-600 m-0 leading-6">
-                        Buy <strong>{formatPrice(order.total)}</strong> worth of
-                        BTC.
-                      </Text>
-                    </Column>
-                  </Row>
-
-                  {/* Step 3 */}
-                  <Row className="mb-3">
-                    <Column className="w-8 align-top">
-                      <Text className="text-base font-bold text-gray-800 m-0">
-                        3.
-                      </Text>
-                    </Column>
-                    <Column>
-                      <Text className="text-sm text-gray-600 m-0 leading-6">
-                        Tap the <strong>"Paper Airplane"</strong> (Send) icon.
-                      </Text>
-                    </Column>
-                  </Row>
-
-                  {/* Step 4 */}
-                  <Row>
-                    <Column className="w-8 align-top">
-                      <Text className="text-base font-bold text-gray-800 m-0">
-                        4.
-                      </Text>
-                    </Column>
-                    <Column>
-                      <Text className="text-sm text-gray-600 m-0 leading-6">
-                        Copy the address below and paste it in the "To" field.
-                      </Text>
-                    </Column>
-                  </Row>
-                </Section>
-
-                {/* WALLET ADDRESS BOX */}
-                <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider m-0 mb-2">
-                  Copy this address:
-                </Text>
-                <Section className="bg-white border-2 border-dashed border-gray-300 rounded p-4 text-center">
-                  <Text className="font-mono text-sm text-gray-800 break-all m-0 select-all">
-                    {process.env.NEXT_PUBLIC_BTC_WALLET_ADDRESS}
-                  </Text>
-                </Section>
-
-                <Text className="text-xs text-center text-gray-400 mt-2">
-                  Order status will update automatically once payment is
-                  detected.
-                </Text>
-              </Section>
-            </Container>
-          ) : null}
-
-          {/* 👆 END OF LOGIC BLOCK 👆 */}
+          {/* Payment Confirmation Request */}
+          {!isManualSystem && <PaymentConfirmationSection />}
 
           <Hr className="border-gray-200 mx-8 my-6" />
 
