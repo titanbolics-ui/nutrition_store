@@ -6,7 +6,7 @@ import {
   Logger,
   ProviderSendNotificationDTO,
   ProviderSendNotificationResultsDTO,
-} from "@medusajs/framework/types";
+} from "@medusajs/types";
 import { Resend, CreateEmailOptions } from "resend";
 import { orderPlacedEmail } from "./emails/order-placed";
 import { orderPaidEmail } from "./emails/order-paid";
@@ -15,6 +15,9 @@ import { orderShippedEmail } from "./emails/order-shipped";
 import { orderDeliveredEmail } from "./emails/order-delivered";
 import { passwordResetEmail } from "./emails/password-reset";
 import { abandonedCartEmail } from "./emails/abandoned-cart";
+import { abandonedCartHelpEmail } from "./emails/abandoned-cart-help";
+import { abandonedCartTrustEmail } from "./emails/abandoned-cart-trust";
+import { abandonedCartFinalEmail } from "./emails/abandoned-cart-final";
 
 type ResendOptions = {
   api_key: string;
@@ -40,6 +43,9 @@ enum Templates {
   ORDER_DELIVERED = "order-delivered",
   PASSWORD_RESET = "password-reset",
   ABANDONED_CART = "abandoned-cart",
+  ABANDONED_CART_HELP = "abandoned-cart-help",
+  ABANDONED_CART_TRUST = "abandoned-cart-trust",
+  ABANDONED_CART_FINAL = "abandoned-cart-final",
 }
 
 const templates: { [key in Templates]?: (props: unknown) => React.ReactNode } =
@@ -51,6 +57,9 @@ const templates: { [key in Templates]?: (props: unknown) => React.ReactNode } =
     [Templates.ORDER_DELIVERED]: orderDeliveredEmail,
     [Templates.PASSWORD_RESET]: passwordResetEmail,
     [Templates.ABANDONED_CART]: abandonedCartEmail,
+    [Templates.ABANDONED_CART_HELP]: abandonedCartHelpEmail,
+    [Templates.ABANDONED_CART_TRUST]: abandonedCartTrustEmail,
+    [Templates.ABANDONED_CART_FINAL]: abandonedCartFinalEmail,
   };
 
 class ResendNotificationProviderService extends AbstractNotificationProviderService {
@@ -113,6 +122,12 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
         return "Reset your password";
       case Templates.ABANDONED_CART:
         return "[Onyx Genetics] Your research stack is reserved for dispatch 🧬";
+      case Templates.ABANDONED_CART_HELP:
+        return "Did you have trouble with checkout?";
+      case Templates.ABANDONED_CART_TRUST:
+        return "[Onyx Genetics] Quality Assurance & Delivery Guarantee";
+      case Templates.ABANDONED_CART_FINAL:
+        return "⏰ Final call for dispatch! Don't miss this window";
       default:
         return "New Email";
     }
