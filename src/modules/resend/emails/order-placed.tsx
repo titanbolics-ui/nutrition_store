@@ -139,6 +139,73 @@ const PayPalPaymentInstructions = ({ order, formatPrice }: PaymentInstructionPro
   </Container>
 );
 
+// Card Payment Instructions
+const CardPaymentInstructions = ({ order }: { order: OrderDTO }) => {
+  const paymentUrl = `${process.env.NEXT_PUBLIC_STORE_URL || "https://onyxgenetics.com"}/us/order/${order.id}/confirmed`;
+  const whatsappUrl = "https://wa.link/q91b6d";
+
+  // Calculate next dispatch day
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  let nextDispatchDay = "";
+  
+  if (dayOfWeek >= 1 && dayOfWeek <= 3) {
+    nextDispatchDay = "Thursday Morning";
+  } else {
+    nextDispatchDay = "Monday Morning";
+  }
+
+  const customerName = order.customer?.first_name || 
+    order.shipping_address?.first_name || 
+    "there";
+
+  return (
+    <Container className="px-8 mb-8">
+      <Section className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <Heading className="text-xl font-bold text-gray-800 m-0 mb-4">
+          Hi {customerName},
+        </Heading>
+        <Text className="text-gray-700 text-base leading-relaxed mb-4">
+          Your research protocol is ready and reserved for the <strong>{nextDispatchDay} Dispatch</strong>.
+        </Text>
+        <Text className="text-gray-700 text-base leading-relaxed mb-6">
+          To finalize your order and secure your items, please use our secure payment terminal via the button below.
+        </Text>
+        
+        {/* Payment Button */}
+        <Section className="text-center mb-6">
+          <Link
+            href={paymentUrl}
+            className="inline-block bg-blue-600 text-white px-8 py-4 rounded-lg font-bold text-base"
+            style={{
+              backgroundColor: "#2563eb",
+              color: "#ffffff",
+              textDecoration: "none",
+              display: "inline-block",
+              padding: "16px 32px",
+              borderRadius: "8px",
+              fontWeight: "700",
+              fontSize: "16px",
+            }}
+          >
+            💳 PAY SECURELY WITH CARD
+          </Link>
+        </Section>
+
+        {/* Alternative Methods */}
+        <Section className="bg-white/50 border border-blue-100 rounded p-4">
+          <Text className="text-sm text-gray-700 m-0">
+            <strong>Note:</strong> If you prefer Cash App, PayPal or direct BTC, just reply to this email or{" "}
+            <Link href={whatsappUrl} className="text-blue-600 font-semibold">
+              message Max on WhatsApp
+            </Link>.
+          </Text>
+        </Section>
+      </Section>
+    </Container>
+  );
+};
+
 // Cash App Payment Instructions
 const CashAppPaymentInstructions = ({ order, formatPrice }: PaymentInstructionProps) => (
   <Container className="px-8 mb-8">
@@ -223,6 +290,11 @@ function OrderPlacedEmailComponent({
     paymentProviderID === "pp_paypal-manual_paypal-manual" ||
     metaMethod === "PAYPAL";
 
+    const isCard =
+    paymentProviderID === "card-manual" ||
+    paymentProviderID === "pp_card-manual_card-manual" ||
+    metaMethod === "CARD";
+
   const btcAmount =
     order.metadata?.amount_btc !== undefined &&
     order.metadata?.amount_btc !== null
@@ -303,6 +375,7 @@ function OrderPlacedEmailComponent({
           {isManualSystem && <ManualPaymentInstructions />}
           {isPayPal && <PayPalPaymentInstructions order={order} formatPrice={formatPrice} btcAmount={btcAmount} />}
           {isCashApp && <CashAppPaymentInstructions order={order} formatPrice={formatPrice} btcAmount={btcAmount} />}
+          {isCard && <CardPaymentInstructions order={order} />}
 
           {/* Payment Confirmation Request */}
           {!isManualSystem && <PaymentConfirmationSection />}
