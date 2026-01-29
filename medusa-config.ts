@@ -40,6 +40,11 @@ module.exports = defineConfig({
             id: "cash-app",
             options: {},
           },
+          {
+            resolve: "./src/modules/payment/providers/card-manual",
+            id: "card-manual",
+            options: {},
+          },
         ],
       },
     },

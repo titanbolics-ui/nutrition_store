@@ -13,7 +13,7 @@ import {
   Column,
   Link,
 } from "@react-email/components";
-import { BigNumberValue, OrderDTO } from "@medusajs/framework/types";
+import { BigNumberValue, OrderDTO } from "@medusajs/types";
 import * as React from "react";
 
 type OrderShippedEmailProps = {
