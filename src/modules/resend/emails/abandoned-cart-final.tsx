@@ -186,7 +186,7 @@ function AbandonedCartFinalEmailComponent({
                   </Column>
                   <Column>
                     <Text className="text-sm text-gray-700 m-0">
-                      <strong>{item.quantity}x</strong> {item.product_title}
+                      <strong>{Number(item.quantity)}x</strong> {item.product_title}
                     </Text>
                   </Column>
                 </Row>

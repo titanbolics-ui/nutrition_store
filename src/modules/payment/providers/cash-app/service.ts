@@ -2,7 +2,7 @@ import {
   AbstractPaymentProvider,
   PaymentSessionStatus,
 } from "@medusajs/framework/utils";
-import { Logger } from "@medusajs/framework/types";
+import { Logger } from "@medusajs/types";
 
 type Options = {
   // Опції

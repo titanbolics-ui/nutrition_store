@@ -223,7 +223,7 @@ function AbandonedCartTrustEmailComponent({
                     {item.product_title}
                   </Text>
                   <Text className="text-xs text-gray-500 m-0">
-                    Qty: {item.quantity} × {formatPrice(item.unit_price)}
+                    Qty: {Number(item.quantity)} × {formatPrice(item.unit_price)}
                   </Text>
                 </Column>
               </Row>

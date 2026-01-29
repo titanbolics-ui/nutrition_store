@@ -1,6 +1,6 @@
 import { Modules } from "@medusajs/framework/utils";
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk";
-import { CreateNotificationDTO } from "@medusajs/framework/types";
+import { CreateNotificationDTO } from "@medusajs/types";
 
 export const sendNotificationStep = createStep(
   "send-notification",

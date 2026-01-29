@@ -150,7 +150,7 @@ function AbandonedCartEmailComponent({
                       </Text>
                     )}
                     <Text className="text-sm text-gray-600 m-0">
-                      Quantity: <strong>{item.quantity}</strong>
+                      Quantity: <strong>{Number(item.quantity)}</strong>
                     </Text>
                   </Column>
 
