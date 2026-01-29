@@ -140,7 +140,7 @@ const PayPalPaymentInstructions = ({ order, formatPrice }: PaymentInstructionPro
 );
 
 // Card Payment Instructions
-const CardPaymentInstructions = ({ order }: { order: OrderDTO }) => {
+const CardPaymentInstructions = ({ order }: { order: OrderDTO & { customer: CustomerDTO } }) => {
   const paymentUrl = `${process.env.NEXT_PUBLIC_STORE_URL || "https://onyxgenetics.com"}/us/order/${order.id}/confirmed`;
   const whatsappUrl = "https://wa.link/q91b6d";
 
