@@ -177,7 +177,7 @@ export default async function abandonedCartSequenceJob(
             template: "abandoned-cart-final",
             data: {
               cart,
-              storefront_url: process.env.NEXT_PUBLIC_STOREFRONT_URL || "http://localhost:8000",
+              storefront_url: process.env.NEXT_PUBLIC_STORE_URL || "https://onyxgenetics.com",
             },
           })
 
