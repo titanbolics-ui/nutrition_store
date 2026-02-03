@@ -10,6 +10,9 @@ export default async function abandonedCartSequenceJob(
   const cartModule = container.resolve(Modules.CART)
 
   const now = new Date()
+
+    // 🛡️ SECURITY CUTOFF: Ignore all carts before this date
+  const CUTOFF_DATE = new Date("2026-01-25T00:00:00Z")
   
   // Time thresholds
   const oneHourAgo = new Date(now.getTime() - 1 * 60 * 60 * 1000) // 1 hour
@@ -27,7 +30,7 @@ export default async function abandonedCartSequenceJob(
       entity: "cart",
       fields: ["id", "email", "items.*", "metadata", "customer.*", "shipping_address.*", "updated_at"],
       filters: {
-        updated_at: { $gte: twoHoursAgo, $lte: oneHourAgo },
+        updated_at: { $gte: twoHoursAgo, $lte: oneHourAgo, $gt: CUTOFF_DATE },
         email: { $ne: null },
         completed_at: null,
       },
@@ -37,7 +40,9 @@ export default async function abandonedCartSequenceJob(
     const stage1Eligible = stage1Carts.filter((cart) => 
       cart.items?.length > 0 && 
       !cart.metadata?.abandoned_help_sent &&
-      cart.email === "titanbolics@gmail.com" // FOR TESTING ONLY - Remove in production
+      // #TODO: Uncomment this when testing is done
+      // cart.email === "titanbolics@gmail.com" // FOR TESTING ONLY - Remove in production
+      true
     )
 
     logger.info(`  Found ${stage1Eligible.length} carts for Stage 1 (Help) [titanbolics only]`)
@@ -50,7 +55,7 @@ export default async function abandonedCartSequenceJob(
           template: "abandoned-cart-help",
           data: {
             cart,
-            storefront_url: process.env.NEXT_PUBLIC_STOREFRONT_URL || "http://localhost:8000",
+            storefront_url: process.env.NEXT_PUBLIC_STORE_URL || "https://onyxgenetics.com",
           },
         })
 
@@ -76,7 +81,7 @@ export default async function abandonedCartSequenceJob(
       entity: "cart",
       fields: ["id", "email", "items.*", "metadata", "customer.*", "shipping_address.*", "updated_at"],
       filters: {
-        updated_at: { $gte: twentyFiveHoursAgo, $lte: twentyFourHoursAgo },
+        updated_at: { $gte: twentyFiveHoursAgo, $lte: twentyFourHoursAgo, $gt: CUTOFF_DATE },
         email: { $ne: null },
         completed_at: null,
       },
@@ -87,7 +92,9 @@ export default async function abandonedCartSequenceJob(
       cart.items?.length > 0 && 
       !!cart.metadata?.abandoned_help_sent &&
       !cart.metadata?.abandoned_trust_sent &&
-      cart.email === "titanbolics@gmail.com" // FOR TESTING ONLY - Remove in production
+      // #TODO: Uncomment this when testing is done
+      // cart.email === "titanbolics@gmail.com" // FOR TESTING ONLY - Remove in production
+      true
     )
 
     logger.info(`  Found ${stage2Eligible.length} carts for Stage 2 (Trust) [titanbolics only]`)
@@ -100,7 +107,7 @@ export default async function abandonedCartSequenceJob(
           template: "abandoned-cart-trust",
           data: {
             cart,
-            storefront_url: process.env.NEXT_PUBLIC_STOREFRONT_URL || "http://localhost:8000",
+            storefront_url: process.env.NEXT_PUBLIC_STORE_URL || "https://onyxgenetics.com",
           },
         })
 
@@ -146,6 +153,7 @@ export default async function abandonedCartSequenceJob(
           updated_at: { $lt: twentyFourHoursAgo },
           email: { $ne: null },
           completed_at: null,
+          $gt: CUTOFF_DATE,
         },
         pagination: { skip: 0, take: 100 },
       })
@@ -154,7 +162,9 @@ export default async function abandonedCartSequenceJob(
         cart.items?.length > 0 && 
         !!cart.metadata?.abandoned_trust_sent &&
         !cart.metadata?.abandoned_final_sent &&
-        cart.email === "titanbolics@gmail.com" // FOR TESTING ONLY - Remove in production
+        // #TODO: Uncomment this when testing is done
+        // cart.email === "titanbolics@gmail.com" // FOR TESTING ONLY - Remove in production
+        true
       )
 
       logger.info(`  Found ${stage3Eligible.length} carts for Stage 3 (Final) [titanbolics only]`)
