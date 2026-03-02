@@ -24,3 +24,9 @@ build
 !.yarn/versions
 
 .medusa
+
+# Local Docker data and local DB dumps
+postgres_data/
+redis_data/
+medusa_backup.sql
+docker-compose.yml

@@ -59,6 +59,15 @@ module.exports = defineConfig({
               channels: ["email"],
               api_key: process.env.RESEND_API_KEY,
               from: process.env.RESEND_FROM_EMAIL,
+              transport:
+                (process.env.EMAIL_TRANSPORT as "resend" | "smtp") || "resend",
+              smtp_host: process.env.SMTP_HOST,
+              smtp_port: process.env.SMTP_PORT
+                ? Number(process.env.SMTP_PORT)
+                : undefined,
+              smtp_secure: process.env.SMTP_SECURE === "true",
+              smtp_user: process.env.SMTP_USER,
+              smtp_pass: process.env.SMTP_PASS,
             },
           },
           {
@@ -96,6 +105,20 @@ module.exports = defineConfig({
       key: Modules.EVENT_BUS,
       options: {
         redisUrl: process.env.REDIS_URL,
+      },
+    },
+    {
+      resolve: "@medusajs/medusa/cache-redis",
+      options: {
+        redisUrl: process.env.REDIS_URL,
+      },
+    },
+    {
+      resolve: "@medusajs/medusa/workflow-engine-redis",
+      options: {
+        redis: {
+          url: process.env.REDIS_URL,
+        },
       },
     },
   ],
