@@ -1,14 +1,14 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework";
-import { ContainerRegistrationKeys } from "@medusajs/utils";
-import { Resend } from "resend";
-
-// Ініціалізація Resend
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { ContainerRegistrationKeys, Modules } from "@medusajs/utils";
+import { INotificationModuleService } from "@medusajs/types";
 
 export default async function handleCustomerCreated({
   event,
   container,
 }: SubscriberArgs<{ id: string }>) {
+  const notificationService: INotificationModuleService = container.resolve(
+    Modules.NOTIFICATION
+  );
   const remoteQuery = container.resolve(ContainerRegistrationKeys.REMOTE_QUERY);
 
   const customerResult = await remoteQuery({
@@ -30,29 +30,21 @@ export default async function handleCustomerCreated({
 
   if (!customer.email) return;
 
-  // Відправляємо лист
+  const storeUrl = process.env.STORE_URL?.replace(/\/+$/, "") || "";
+  const storefrontUrl = storeUrl ? `${storeUrl}/store` : "http://localhost:8000";
+
   try {
-    const { data, error } = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || "Acme <onboarding@resend.dev>",
-      to: [customer.email],
-      subject: "Welcome to Onyx Genetics! 💪",
-      html: `
-        <div style="font-family: sans-serif; color: #333;">
-          <h1>Welcome to the Club!</h1>
-          <p>Hi ${customer.first_name || "Athlete"},</p>
-          <p>Thank you for registering at <strong>Onyx Genetics</strong>.</p>
-          <p>We are glad to have you with us. Check out our latest products for your cycle.</p>
-          <br/>
-          <a href="${process.env.STORE_URL}/store" style="background-color: #000; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Go to Store</a>
-        </div>
-      `,
+    const data = await notificationService.createNotifications({
+      to: customer.email,
+      channel: "email",
+      template: "customer-welcome",
+      data: {
+        customer,
+        store_url: storefrontUrl,
+      },
     });
 
-    if (error) {
-      console.error("Resend Error:", error);
-    } else {
-      console.log("Welcome Email Sent:", data);
-    }
+    console.log("Welcome Email Sent:", data);
   } catch (err) {
     console.error("Email sending failed:", err);
   }

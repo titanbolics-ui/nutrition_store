@@ -8,6 +8,8 @@ import {
   ProviderSendNotificationResultsDTO,
 } from "@medusajs/types";
 import { Resend, CreateEmailOptions } from "resend";
+import { render } from "@react-email/render";
+import nodemailer, { Transporter } from "nodemailer";
 import { orderPlacedEmail } from "./emails/order-placed";
 import { orderPaidEmail } from "./emails/order-paid";
 import { orderFulfilledEmail } from "./emails/order-fulfilled";
@@ -18,10 +20,18 @@ import { abandonedCartEmail } from "./emails/abandoned-cart";
 import { abandonedCartHelpEmail } from "./emails/abandoned-cart-help";
 import { abandonedCartTrustEmail } from "./emails/abandoned-cart-trust";
 import { abandonedCartFinalEmail } from "./emails/abandoned-cart-final";
+import { orderTransferRequestedEmail } from "./emails/order-transfer-requested";
+import { customerWelcomeEmail } from "./emails/customer-welcome";
 
 type ResendOptions = {
-  api_key: string;
+  api_key?: string;
   from: string;
+  transport?: "resend" | "smtp";
+  smtp_host?: string;
+  smtp_port?: number;
+  smtp_secure?: boolean;
+  smtp_user?: string;
+  smtp_pass?: string;
   html_templates?: Record<
     string,
     {
@@ -46,6 +56,8 @@ enum Templates {
   ABANDONED_CART_HELP = "abandoned-cart-help",
   ABANDONED_CART_TRUST = "abandoned-cart-trust",
   ABANDONED_CART_FINAL = "abandoned-cart-final",
+  ORDER_TRANSFER_REQUESTED = "order-transfer-requested",
+  CUSTOMER_WELCOME = "customer-welcome",
 }
 
 const templates: { [key in Templates]?: (props: unknown) => React.ReactNode } =
@@ -60,15 +72,31 @@ const templates: { [key in Templates]?: (props: unknown) => React.ReactNode } =
     [Templates.ABANDONED_CART_HELP]: abandonedCartHelpEmail,
     [Templates.ABANDONED_CART_TRUST]: abandonedCartTrustEmail,
     [Templates.ABANDONED_CART_FINAL]: abandonedCartFinalEmail,
+    [Templates.ORDER_TRANSFER_REQUESTED]: orderTransferRequestedEmail,
+    [Templates.CUSTOMER_WELCOME]: customerWelcomeEmail,
   };
 
 class ResendNotificationProviderService extends AbstractNotificationProviderService {
   static identifier = "notification-resend";
   static validateOptions(options: Record<any, any>) {
-    if (!options.api_key) {
+    const transport = options.transport || "resend";
+
+    if (transport === "resend" && !options.api_key) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
         "Option `api_key` is required in the provider's options."
+      );
+    }
+    if (transport === "smtp" && !options.smtp_host) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        "Option `smtp_host` is required when `transport` is `smtp`."
+      );
+    }
+    if (transport === "smtp" && !options.smtp_port) {
+      throw new MedusaError(
+        MedusaError.Types.INVALID_DATA,
+        "Option `smtp_port` is required when `transport` is `smtp`."
       );
     }
     if (!options.from) {
@@ -79,13 +107,29 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
     }
   }
 
-  private resendClient: Resend;
+  private resendClient?: Resend;
+  private smtpTransporter?: Transporter;
   private options: ResendOptions;
   private logger: Logger;
 
   constructor({ logger }: InjectedDependencies, options: ResendOptions) {
     super();
-    this.resendClient = new Resend(options.api_key);
+    const transport = options.transport || "resend";
+    if (transport === "smtp") {
+      this.smtpTransporter = nodemailer.createTransport({
+        host: options.smtp_host,
+        port: options.smtp_port,
+        secure: options.smtp_secure || false,
+        auth: options.smtp_user
+          ? {
+              user: options.smtp_user,
+              pass: options.smtp_pass,
+            }
+          : undefined,
+      });
+    } else {
+      this.resendClient = new Resend(options.api_key);
+    }
     this.options = options;
     this.logger = logger;
   }
@@ -128,6 +172,10 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
         return "[Onyx Genetics] Quality Assurance & Delivery Guarantee";
       case Templates.ABANDONED_CART_FINAL:
         return "⏰ Final call for dispatch! Don't miss this window";
+      case Templates.ORDER_TRANSFER_REQUESTED:
+        return "Confirm order transfer request";
+      case Templates.CUSTOMER_WELCOME:
+        return "Welcome to Onyx Genetics";
       default:
         return "New Email";
     }
@@ -155,6 +203,36 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
       subject: this.getTemplateSubject(notification.template as Templates),
     };
 
+    const reactTemplate =
+      typeof template === "string" ? undefined : template(notification.data);
+
+    const htmlTemplate =
+      typeof template === "string"
+        ? template
+        : await render(reactTemplate as React.ReactElement);
+
+    if ((this.options.transport || "resend") === "smtp") {
+      if (!this.smtpTransporter) {
+        this.logger.error("SMTP transporter is not initialized");
+        return {};
+      }
+
+      const info = await this.smtpTransporter.sendMail({
+        from: commonOptions.from,
+        to: commonOptions.to[0],
+        subject: commonOptions.subject,
+        html: htmlTemplate,
+      });
+
+      console.log(`✅ SMTP service: Email sent successfully! ID: ${info.messageId}`);
+      return { id: info.messageId };
+    }
+
+    if (!this.resendClient) {
+      this.logger.error("Resend client is not initialized");
+      return {};
+    }
+
     let emailOptions: CreateEmailOptions;
     if (typeof template === "string") {
       emailOptions = {
@@ -164,7 +242,7 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
     } else {
       emailOptions = {
         ...commonOptions,
-        react: template(notification.data),
+        react: reactTemplate,
       };
     }
 
