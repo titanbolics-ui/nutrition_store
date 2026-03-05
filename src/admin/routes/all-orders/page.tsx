@@ -18,20 +18,11 @@ export const config = defineRouteConfig({
   icon: ShoppingCart,
 });
 
-// Status colors
-const statusColors = {
-  pending: { color: "orange", label: "Pending" },
-  completed: { color: "green", label: "Completed" },
-  canceled: { color: "red", label: "Canceled" },
-  draft: { color: "grey", label: "Draft" },
-  archived: { color: "grey", label: "Archived" },
-};
-
 const paymentStatusColors = {
   not_paid: { color: "red", label: "Not Paid" },
   awaiting: { color: "orange", label: "Awaiting" },
-  captured: { color: "green", label: "Captured" },
-  authorized: { color: "blue", label: "Authorized" },
+  captured: { color: "green", label: "Paid" },
+  authorized: { color: "orange", label: "Awaiting" },
   refunded: { color: "purple", label: "Refunded" },
   canceled: { color: "red", label: "Canceled" },
 };
@@ -45,25 +36,31 @@ const fulfillmentStatusColors = {
   canceled: { color: "red", label: "Canceled" },
 };
 
+const PAGE_SIZE = 25;
+
 export default function CustomOrdersPage() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<any[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showArchived, setShowArchived] = useState(false);
+  const [offset, setOffset] = useState(0);
+
+  useEffect(() => {
+    setOffset(0);
+  }, [showArchived]);
 
   useEffect(() => {
     loadOrders();
-  }, [showArchived]);
+  }, [showArchived, offset]);
 
   const loadOrders = async () => {
     setIsLoading(true);
     try {
-      // Build URL with filters
       let url =
-        "/admin/orders?fields=id,display_id,email,status,payment_status,fulfillment_status,total,currency_code,created_at,*customer,+customer.has_account&order=-created_at&limit=50";
+        `/admin/orders?fields=id,display_id,email,status,payment_status,fulfillment_status,total,currency_code,created_at,*customer,+customer.has_account,*fulfillments,fulfillments.labels.tracking_number,fulfillments.labels.tracking_url&order=-created_at&limit=${PAGE_SIZE}&offset=${offset}`;
 
-      // If not showing archived, filter them out
       if (!showArchived) {
         url += "&status[]=pending&status[]=completed&status[]=canceled&status[]=draft";
       }
@@ -73,6 +70,7 @@ export default function CustomOrdersPage() {
       });
       const data = await response.json();
       setOrders(data.orders || []);
+      setTotalCount(data.count ?? data.orders?.length ?? 0);
     } catch (error) {
       console.error("Error loading orders:", error);
     } finally {
@@ -130,7 +128,9 @@ export default function CustomOrdersPage() {
               Orders
             </Heading>
             <p className="text-ui-fg-subtle mt-1">
-              Total: {filteredOrders.length} orders
+              {searchTerm
+                ? `${filteredOrders.length} of ${totalCount} orders`
+                : `${totalCount} orders total`}
             </p>
           </div>
           <Button onClick={() => navigate("/orders/new")} variant="primary">
@@ -187,9 +187,9 @@ export default function CustomOrdersPage() {
                   <Table.HeaderCell>Date</Table.HeaderCell>
                   <Table.HeaderCell>Customer</Table.HeaderCell>
                   <Table.HeaderCell>Type</Table.HeaderCell>
-                  <Table.HeaderCell>Status</Table.HeaderCell>
                   <Table.HeaderCell>Payment</Table.HeaderCell>
                   <Table.HeaderCell>Fulfillment</Table.HeaderCell>
+                  <Table.HeaderCell>Tracking</Table.HeaderCell>
                   <Table.HeaderCell className="text-right">Total</Table.HeaderCell>
                 </Table.Row>
               </Table.Header>
@@ -230,16 +230,6 @@ export default function CustomOrdersPage() {
                     <Table.Cell>
                       <Badge
                         color={
-                          (statusColors as any)[order.status]?.color || "grey"
-                        }
-                        size="small"
-                      >
-                        {(statusColors as any)[order.status]?.label || order.status}
-                      </Badge>
-                    </Table.Cell>
-                    <Table.Cell>
-                      <Badge
-                        color={
                           (paymentStatusColors as any)[order.payment_status]?.color ||
                           "grey"
                         }
@@ -261,6 +251,11 @@ export default function CustomOrdersPage() {
                           ?.label || order.fulfillment_status}
                       </Badge>
                     </Table.Cell>
+                    <Table.Cell>
+                      {order.fulfillments?.flatMap?.((f: any) =>
+                        f?.labels?.map?.((l: any) => l?.tracking_number) || []
+                      ).filter(Boolean).join(", ") || "—"}
+                    </Table.Cell>
                     <Table.Cell className="text-right font-medium">
                       {formatPrice(order.total, order.currency_code)}
                     </Table.Cell>
@@ -269,6 +264,31 @@ export default function CustomOrdersPage() {
               </Table.Body>
             </Table>
           </div>
+          {totalCount > PAGE_SIZE && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-ui-border-base">
+              <p className="text-sm text-ui-fg-subtle">
+                Showing {offset + 1}–{Math.min(offset + PAGE_SIZE, totalCount)} of {totalCount}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="small"
+                  disabled={offset === 0}
+                  onClick={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  disabled={offset + PAGE_SIZE >= totalCount}
+                  onClick={() => setOffset((o) => o + PAGE_SIZE)}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </Container>
       )}
     </div>
