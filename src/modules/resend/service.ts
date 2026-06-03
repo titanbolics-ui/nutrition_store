@@ -197,10 +197,11 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
       return {};
     }
 
+    const dataSubject = (notification.data as any)?.subject_override as string | undefined;
     const commonOptions = {
       from: this.options.from,
       to: [notification.to],
-      subject: this.getTemplateSubject(notification.template as Templates),
+      subject: dataSubject || this.getTemplateSubject(notification.template as Templates),
     };
 
     const reactTemplate =

@@ -1,16 +1,8 @@
 import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Link,
-  Preview,
-  Section,
-  Tailwind,
-  Text,
+  Body, Container, Head, Html, Preview,
+  Section, Text, Tailwind, Hr, Row, Column, Link,
 } from "@react-email/components";
+import * as React from "react";
 
 type OrderTransferRequestedEmailProps = {
   order: {
@@ -33,69 +25,88 @@ function OrderTransferRequestedEmailComponent({
   customer,
 }: OrderTransferRequestedEmailProps) {
   const customerName = customer?.first_name || customer?.email || "there";
-  const orderLabel = order.display_id ? `#${order.display_id}` : order.id;
+  const orderLabel = order.display_id ? `#ONX-${order.display_id}` : order.id;
 
   return (
-    <Tailwind>
-      <Html>
+    <Tailwind config={{ theme: { extend: { colors: { brand: "#111111" } } } }}>
+      <Html style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}>
         <Head />
         <Preview>{`Confirm transfer for order ${orderLabel}`}</Preview>
-        <Body className="bg-white my-auto mx-auto font-sans px-2">
-          <Container className="border border-solid border-[#eaeaea] rounded my-[40px] mx-auto p-[20px] max-w-[560px]">
-            <Heading className="text-black text-[24px] font-normal text-center p-0 my-[20px] mx-0">
-              Confirm Order Transfer
-            </Heading>
+        <Body style={{ background: "#0a0a0a", margin: 0, padding: "32px 0" }}>
+          <Container style={{ maxWidth: 580, margin: "0 auto" }}>
 
-            <Section className="my-[24px]">
-              <Text className="text-black text-[14px] leading-[24px]">
-                Hi {customerName},
-              </Text>
-              <Text className="text-black text-[14px] leading-[24px]">
-                You have a pending request to transfer order{" "}
-                <strong>{orderLabel}</strong> to your customer account.
-              </Text>
-              <Text className="text-black text-[14px] leading-[24px]">
-                To complete the transfer, open your account and confirm using
-                this token:
-              </Text>
+            {/* Header */}
+            <Section style={{ background: "#000000", borderRadius: "12px 12px 0 0", padding: "20px 24px" }}>
+              <Row>
+                <Column>
+                  <Text style={{ color: "#b8ff2b", fontSize: 18, fontWeight: 800, letterSpacing: 2, textTransform: "uppercase", margin: 0 }}>
+                    ONYX GENETICS
+                  </Text>
+                </Column>
+                <Column align="right">
+                  <Text style={{ color: "#6b7280", fontSize: 12, margin: 0 }}>
+                    {orderLabel}
+                  </Text>
+                </Column>
+              </Row>
             </Section>
 
-            <Section className="bg-[#f6f9fc] rounded border border-solid border-[#eaeaea] px-[16px] py-[12px] my-[18px]">
-              <Text className="text-[12px] uppercase tracking-[0.08em] text-[#666666] m-0">
-                Transfer token
+            {/* Hero */}
+            <Section style={{ background: "#111111", padding: "28px 24px 20px", borderLeft: "1px solid #1f1f1f", borderRight: "1px solid #1f1f1f" }}>
+              <Text style={{ color: "#ffffff", fontSize: 24, fontWeight: 700, margin: "0 0 8px" }}>
+                Order transfer request
               </Text>
-              <Text className="text-[16px] leading-[24px] text-black font-bold m-0 break-all">
-                {token}
+              <Text style={{ color: "#9ca3af", fontSize: 14, margin: "0 0 4px", lineHeight: 1.6 }}>
+                Hi {customerName}, a request has been made to transfer order{" "}
+                <strong style={{ color: "#ffffff" }}>{orderLabel}</strong> to your customer account.
               </Text>
+              <Text style={{ color: "#9ca3af", fontSize: 14, margin: 0, lineHeight: 1.6 }}>
+                Use the token below or click the button to confirm the transfer.
+              </Text>
+              <Hr style={{ borderColor: "#1f1f1f", margin: "20px 0 0" }} />
             </Section>
 
-            <Section className="text-center mt-[26px] mb-[20px]">
-              <Button
-                className="bg-[#000000] rounded text-white text-[13px] font-semibold no-underline text-center px-5 py-3"
-                href={accept_url}
-              >
-                Open transfer confirmation
-              </Button>
-            </Section>
+            {/* Token */}
+            <Section style={{ background: "#111111", padding: "20px 24px", borderLeft: "1px solid #1f1f1f", borderRight: "1px solid #1f1f1f" }}>
+              <Section style={{ background: "#0d0d0d", border: "1px solid #2a2a2a", borderRadius: 8, padding: "14px 16px", marginBottom: 20 }}>
+                <Text style={{ color: "#6b7280", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, margin: "0 0 6px" }}>
+                  Transfer token
+                </Text>
+                <Text style={{ color: "#ffffff", fontFamily: "monospace", fontSize: 15, fontWeight: 700, wordBreak: "break-all", margin: 0, letterSpacing: 0.5 }}>
+                  {token}
+                </Text>
+              </Section>
 
-            <Section className="my-[18px]">
-              <Text className="text-black text-[13px] leading-[22px] m-0 mb-[8px]">
-                If the button does not work, use this link:
+              <Section style={{ textAlign: "center", marginBottom: 20 }}>
+                <Link
+                  href={accept_url}
+                  style={{ background: "#b8ff2b", color: "#000000", textDecoration: "none", display: "inline-block", padding: "13px 32px", borderRadius: 8, fontWeight: 700, fontSize: 14 }}
+                >
+                  Confirm transfer →
+                </Link>
+              </Section>
+
+              <Text style={{ color: "#4b5563", fontSize: 12, margin: "0 0 4px" }}>
+                Or open this link directly:
               </Text>
               <Link
                 href={accept_url}
-                className="text-blue-600 no-underline text-[13px] leading-[22px] break-all"
+                style={{ color: "#6b7280", fontSize: 12, wordBreak: "break-all" }}
               >
                 {accept_url}
               </Link>
             </Section>
 
-            <Section className="mt-[24px] pt-[16px] border-t border-solid border-[#eaeaea]">
-              <Text className="text-[#666666] text-[12px] leading-[20px]">
-                If you did not expect this transfer request, you can safely
-                ignore this email.
+            {/* Footer */}
+            <Section style={{ background: "#000000", borderRadius: "0 0 12px 12px", padding: "20px 24px", borderLeft: "1px solid #1f1f1f", borderRight: "1px solid #1f1f1f", borderBottom: "1px solid #1f1f1f" }}>
+              <Text style={{ color: "#4b5563", fontSize: 12, textAlign: "center", margin: "0 0 6px", lineHeight: 1.6 }}>
+                If you did not expect this request, you can safely ignore this email.
+              </Text>
+              <Text style={{ color: "#374151", fontSize: 11, textAlign: "center", margin: 0 }}>
+                © {new Date().getFullYear()} Onyx Genetics. All rights reserved.
               </Text>
             </Section>
+
           </Container>
         </Body>
       </Html>

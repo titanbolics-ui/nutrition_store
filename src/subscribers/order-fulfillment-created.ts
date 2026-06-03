@@ -12,86 +12,95 @@ export default async function orderFulfillmentCreatedHandler({
   event,
   container,
 }: SubscriberArgs<FulfillmentCreatedEvent>) {
-  console.log(
-    `⚡ Event 'order.fulfillment_created' triggered with data:`,
-    JSON.stringify(event.data, null, 2)
-  );
+  const { order_id, fulfillment_id, no_notification } = event.data;
 
-  const { order_id, no_notification } = event.data;
-
-  if (no_notification) {
-    console.log(
-      `⚠️ Skipping fulfillment notification (no_notification=true) for order_id: ${order_id}`
-    );
-    return;
-  }
+  if (no_notification) return;
 
   const notificationService: INotificationModuleService = container.resolve(
     Modules.NOTIFICATION
   );
-
   const remoteQuery = container.resolve(ContainerRegistrationKeys.REMOTE_QUERY);
 
+  // 1. Fetch order with all items
   const orderResult = await remoteQuery({
     entryPoint: "order",
     fields: [
-      "id",
-      "display_id",
-      "email",
-      "total",
-      "currency_code",
-      "shipping_address.*",
+      "id", "display_id", "email", "total", "currency_code",
+      "fulfillment_status", "shipping_address.*",
+      "items.id", "items.product_title", "items.variant_title",
+      "items.quantity", "items.thumbnail",
     ],
-    variables: {
-      id: order_id,
-    },
+    variables: { id: order_id },
   });
-
   const order = Array.isArray(orderResult) ? orderResult[0] : orderResult;
+  if (!order?.email) return;
 
-  if (!order) {
-    console.warn(
-      `⚠️ Order not found for order.fulfillment_created (order_id: ${order_id})`
-    );
-    return;
+  // 2. Fetch this specific fulfillment with items + location
+  const fulfillmentResult = await remoteQuery({
+    entryPoint: "fulfillment",
+    fields: [
+      "id", "location_id",
+      "items.line_item_id", "items.title", "items.quantity",
+    ],
+    variables: { id: fulfillment_id },
+  });
+  const fulfillment = Array.isArray(fulfillmentResult)
+    ? fulfillmentResult[0]
+    : fulfillmentResult;
+
+  // 3. Resolve stock location name
+  let locationName = "Warehouse";
+  if (fulfillment?.location_id) {
+    const locResult = await remoteQuery({
+      entryPoint: "stock_location",
+      fields: ["id", "name"],
+      variables: { id: fulfillment.location_id },
+    }).catch(() => null);
+    const loc = Array.isArray(locResult) ? locResult[0] : locResult;
+    if (loc?.name) locationName = loc.name;
   }
 
-  if (!order.email) {
-    console.warn(
-      `⚠️ Order #${order.display_id} has no email. Skipping fulfillment notification.`
-    );
-    return;
-  }
+  // 4. Fetch ALL fulfillments for this order to determine truly remaining items
+  const allFulfillmentsResult = await remoteQuery({
+    entryPoint: "fulfillment",
+    fields: ["id", "items.line_item_id"],
+    variables: { order_id: order.id },
+  }).catch(() => []);
+  const allFulfillments = Array.isArray(allFulfillmentsResult)
+    ? allFulfillmentsResult
+    : [allFulfillmentsResult];
 
-  console.log(
-    `📧 Sending 'Order Fulfilled' email to ${order.email} for Order #${order.display_id}`
+  const allFulfilledIds = new Set<string>(
+    allFulfillments.flatMap((f: any) =>
+      (f?.items ?? []).map((i: any) => i.line_item_id).filter(Boolean)
+    )
   );
 
-  try {
-    const result = await notificationService.createNotifications({
-      to: order.email,
-      channel: "email",
-      template: "order-fulfilled",
-      data: {
-        order,
-      },
-    });
+  const remainingItems = (order.items ?? []).filter(
+    (item: any) => !allFulfilledIds.has(item.id)
+  );
+  const isPartial = remainingItems.length > 0;
 
-    console.log(
-      `✅ Notification created successfully for Order #${order.display_id}:`,
-      JSON.stringify(result, null, 2)
-    );
-  } catch (error) {
-    console.error(
-      `❌ Failed to send 'Order Fulfilled' email for Order #${order.display_id}:`,
-      error
-    );
-    throw error;
-  }
+  console.log(
+    `📧 Sending 'Order Fulfilled' email to ${order.email} for Order #${order.display_id} (partial: ${isPartial})`
+  );
+
+  await notificationService.createNotifications({
+    to: order.email,
+    channel: "email",
+    template: "order-fulfilled",
+    data: {
+      order,
+      fulfillment: {
+        ...fulfillment,
+        location_name: locationName,
+      },
+      is_partial: isPartial,
+      remaining_items: remainingItems,
+    },
+  });
 }
 
 export const config: SubscriberConfig = {
   event: "order.fulfillment_created",
 };
-
-
