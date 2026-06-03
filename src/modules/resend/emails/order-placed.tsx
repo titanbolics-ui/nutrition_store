@@ -14,22 +14,12 @@ import {
   Link,
   Hr,
 } from "@react-email/components";
-import {
-  BigNumberValue,
-  CustomerDTO,
-  OrderDTO,
-} from "@medusajs/types";
+import { BigNumberValue, CustomerDTO, OrderDTO } from "@medusajs/types";
 import * as React from "react";
 
 type OrderPlacedEmailProps = {
-  order: OrderDTO & {
-    customer: CustomerDTO;
-  };
-  email_banner?: {
-    body: string;
-    title: string;
-    url: string;
-  };
+  order: OrderDTO & { customer: CustomerDTO };
+  email_banner?: { body: string; title: string; url: string };
   paymentProviderID?: string;
 };
 
@@ -39,491 +29,336 @@ type PaymentInstructionProps = {
   btcAmount: string | null;
 };
 
-// Payment Confirmation Request Component
-const PaymentConfirmationSection = () => (
-  <Container className="px-8 mb-8">
-    <Section className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-      <Heading className="text-lg font-bold text-yellow-800 m-0 mb-3">
-        📸 Payment Confirmation Required
-      </Heading>
-      <Text className="text-gray-700 text-sm mb-2">
-        Once you've completed the payment, please reply to this email with a screenshot or proof of payment. This helps us process your order faster.
-      </Text>
-      <Text className="text-xs text-gray-600 m-0">
-        Simply hit "Reply" and attach your payment screenshot.
-      </Text>
-    </Section>
-  </Container>
-);
+const STORE_URL = process.env.STORE_URL || "https://onyxgenetics.com";
+const BTC_ADDRESS = process.env.NEXT_PUBLIC_BTC_WALLET_ADDRESS || "";
+const PAYPAL_ADDRESS = process.env.NEXT_PUBLIC_PAYPAL_WALLET_ADDRESS || "";
 
-// Wallet Display Component
-const WalletAddress = ({ label, address, colorClass = "text-gray-800" }: { label: string; address: string; colorClass?: string }) => (
-  <Section className="bg-white border border-gray-200 rounded p-3">
-    <Text className={`text-xs font-bold uppercase tracking-wider m-0 mb-1 ${colorClass}`}>
+// ─── Shared sub-components ────────────────────────────────────────────────────
+
+const AddressBox = ({ label, value }: { label: string; value: string }) => (
+  <Section style={{ background: "#0d0d0d", border: "1px solid #2a2a2a", borderRadius: 8, padding: "12px 16px", marginBottom: 0 }}>
+    <Text style={{ color: "#6b7280", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, margin: "0 0 6px" }}>
       {label}
     </Text>
-    <Text className="font-mono text-sm text-gray-800 break-all m-0">
-      {address}
+    <Text style={{ color: "#ffffff", fontFamily: "monospace", fontSize: 13, wordBreak: "break-all", margin: 0 }}>
+      {value}
     </Text>
   </Section>
 );
 
-// Crypto Payment Instructions
-const CryptoPaymentInstructions = ({ order, formatPrice, btcAmount }: PaymentInstructionProps) => (
-  <Container className="px-8 mb-8">
-    <Section className="bg-orange-50 border border-orange-200 rounded-lg p-6">
-      <Heading className="text-lg font-bold text-orange-800 m-0 mb-3">
-        ₿ Crypto Payment Required
-      </Heading>
-      <Text className="text-gray-700 text-sm mb-4">
-        Please send exactly{" "}
-        {btcAmount && btcAmount !== "0" ? (
-          <strong>{btcAmount} BTC</strong>
-        ) : (
-          <strong>{formatPrice(order.total)}</strong>
-        )}{" "}
-        to the wallet address below:
-      </Text>
-      <WalletAddress 
-        label="Bitcoin (BTC)" 
-        address={process.env.NEXT_PUBLIC_BTC_WALLET_ADDRESS || ""} 
-        colorClass="text-btc"
-      />
-    </Section>
-  </Container>
+const PaymentConfirmationSection = () => (
+  <Section style={{ background: "#1a1200", border: "1px solid #b8ff2b33", borderRadius: 10, padding: "14px 14px", marginBottom: 24 }}>
+    <Text style={{ color: "#b8ff2b", fontSize: 13, fontWeight: 700, margin: "0 0 8px" }}>
+      📸 Action required: send payment proof
+    </Text>
+    <Text style={{ color: "#d1d5db", fontSize: 13, lineHeight: 1.6, margin: "0 0 6px" }}>
+      Once you've completed the payment, please <strong style={{ color: "#ffffff" }}>reply to this email</strong> with a screenshot or confirmation of your payment. This helps us process your order without delays.
+    </Text>
+    <Text style={{ color: "#9ca3af", fontSize: 12, margin: 0 }}>
+      Simply hit "Reply" and attach your payment screenshot.
+    </Text>
+  </Section>
 );
 
-// Manual/System Payment Instructions
-const ManualPaymentInstructions = () => (
-  <Container className="px-8 mb-8">
-    <Section className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-      <Heading className="text-lg font-bold text-blue-800 m-0 mb-2">
-        ℹ️ Manual Payment (Default)
-      </Heading>
-      <Text className="text-blue-900 text-sm m-0 mb-4">
-        This order was placed using the default System Provider
-      </Text>
-      <Section className="bg-white/50 border border-blue-100 rounded p-3">
-        <Text className="text-xs text-blue-800 m-0">
-          If this is a real order, please contact support for payment details (Crypto / PayPal / Cash App).
-          <br /><br />
-          <i>(Admin Note: This is separate from the Crypto logic)</i>
-        </Text>
-      </Section>
+// ─── Payment method sections ──────────────────────────────────────────────────
+
+const CashAppInstructions = ({ order, formatPrice }: PaymentInstructionProps) => (
+  <Section style={{ background: "#031a0e", border: "1px solid #10b98133", borderRadius: 10, padding: "16px 14px", marginBottom: 24 }}>
+    <Row>
+      <Column>
+        <Heading style={{ color: "#ffffff", fontSize: 18, fontWeight: 700, margin: "0 0 4px" }}>
+          Pay via Cash App
+        </Heading>
+      </Column>
+      <Column align="right">
+        <Text style={{ color: "#10b981", fontSize: 11, fontWeight: 700, margin: 0 }}>FASTEST METHOD</Text>
+      </Column>
+    </Row>
+    <Text style={{ color: "#6ee7b7", fontSize: 13, fontWeight: 600, margin: "0 0 16px" }}>
+      Amount due: {formatPrice(order.total)}
+    </Text>
+    <Text style={{ color: "#d1d5db", fontSize: 13, margin: "0 0 12px" }}>
+      Complete your payment in 60 seconds using Bitcoin on Cash App:
+    </Text>
+    <Section style={{ background: "#0d1a12", border: "1px solid #10b98120", borderRadius: 8, padding: "12px 12px", marginBottom: 16 }}>
+      {[
+        { n: 1, t: <>Open Cash App and tap the <strong style={{ color: "#ffffff" }}>Bitcoin</strong> tab</> },
+        { n: 2, t: <>Tap <strong style={{ color: "#ffffff" }}>Buy</strong>, enter exactly <strong style={{ color: "#6ee7b7" }}>{formatPrice(order.total)}</strong>, tap <strong style={{ color: "#ffffff" }}>Confirm</strong></> },
+        { n: 3, t: <>After purchase tap <strong style={{ color: "#ffffff" }}>Send Bitcoin</strong> on the Bitcoin screen</> },
+        { n: 4, t: <>Paste the wallet address below into the <strong style={{ color: "#ffffff" }}>To</strong> field and confirm</> },
+      ].map(({ n, t }) => (
+        <Row key={n} style={{ marginBottom: n < 4 ? 10 : 0 }}>
+          <Column style={{ width: 24 }}>
+            <Text style={{ color: "#10b981", fontSize: 13, fontWeight: 700, margin: 0 }}>{n}.</Text>
+          </Column>
+          <Column>
+            <Text style={{ color: "#d1d5db", fontSize: 13, margin: 0, lineHeight: 1.5 }}>{t}</Text>
+          </Column>
+        </Row>
+      ))}
     </Section>
-  </Container>
+    <AddressBox label="Bitcoin address — copy exactly" value={BTC_ADDRESS} />
+    <Text style={{ color: "#6b7280", fontSize: 11, textAlign: "center", margin: "10px 0 0" }}>
+      Order status updates automatically once payment is detected.
+    </Text>
+  </Section>
 );
 
-// PayPal Payment Instructions
-const PayPalPaymentInstructions = ({ order, formatPrice }: PaymentInstructionProps) => (
-  <Container className="px-8 mb-8">
-    <Section className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-      <Heading className="text-lg font-bold text-blue-800 m-0 mb-3">
-        💳 PayPal Payment Instructions
-      </Heading>
-      <Text className="text-blue-900 text-sm mb-3">
-        To complete your payment, please send{" "}
-        <strong>{formatPrice(order.total)}</strong> via PayPal to the wallet below.{" "}
-        <strong>You must select "Send to friends and family" option.</strong>{" "}
-        Do not include any additional notes or comments.
-      </Text>
-      <WalletAddress 
-        label="PayPal Wallet" 
-        address={`Paypal email (COPY ONLY)\n${process.env.NEXT_PUBLIC_PAYPAL_WALLET_ADDRESS || ""}`}
-        colorClass="text-blue-800"
-      />
-      <Text className="text-blue-900 text-xs mt-3 m-0">
-        Order reference: <strong>#ONX-{order.display_id}</strong>
-      </Text>
-    </Section>
-  </Container>
+const CryptoInstructions = ({ order, formatPrice, btcAmount }: PaymentInstructionProps) => (
+  <Section style={{ background: "#1a0d00", border: "1px solid #f9731633", borderRadius: 10, padding: "20px 24px", marginBottom: 24 }}>
+    <Heading style={{ color: "#ffffff", fontSize: 18, fontWeight: 700, margin: "0 0 12px" }}>
+      ₿ Bitcoin Payment
+    </Heading>
+    <Text style={{ color: "#d1d5db", fontSize: 13, margin: "0 0 16px", lineHeight: 1.6 }}>
+      Please send exactly{" "}
+      <strong style={{ color: "#fb923c" }}>
+        {btcAmount && btcAmount !== "0" ? `${btcAmount} BTC` : formatPrice(order.total)}
+      </strong>{" "}
+      to the address below. Send only BTC — other coins will be lost.
+    </Text>
+    <AddressBox label="Bitcoin (BTC) wallet address" value={BTC_ADDRESS} />
+  </Section>
 );
 
-// Card Payment Instructions
-const CardPaymentInstructions = ({ order }: { order: OrderDTO & { customer: CustomerDTO } }) => {
-  const paymentUrl = `${process.env.NEXT_PUBLIC_STORE_URL || "https://onyxgenetics.com"}/us/order/${order.id}/confirmed`;
-  const whatsappUrl = "https://wa.link/q91b6d";
+const PayPalInstructions = ({ order, formatPrice }: PaymentInstructionProps) => (
+  <Section style={{ background: "#00071a", border: "1px solid #3b82f633", borderRadius: 10, padding: "20px 24px", marginBottom: 24 }}>
+    <Heading style={{ color: "#ffffff", fontSize: 18, fontWeight: 700, margin: "0 0 12px" }}>
+      💳 PayPal Payment
+    </Heading>
+    <Section style={{ background: "#3b0000", border: "1px solid #ef444433", borderRadius: 8, padding: "10px 14px", marginBottom: 16 }}>
+      <Text style={{ color: "#fca5a5", fontSize: 13, fontWeight: 700, margin: 0 }}>
+        ⚠️ You must select "Friends &amp; Family" — NOT "Goods &amp; Services"
+      </Text>
+    </Section>
+    <Text style={{ color: "#d1d5db", fontSize: 13, margin: "0 0 16px", lineHeight: 1.6 }}>
+      Send <strong style={{ color: "#93c5fd" }}>{formatPrice(order.total)}</strong> via PayPal. Do not include any notes or comments in the payment.
+    </Text>
+    <AddressBox label="PayPal email — copy exactly" value={PAYPAL_ADDRESS} />
+    <Text style={{ color: "#fbbf24", fontSize: 12, margin: "10px 0 0" }}>
+      ⚠️ Do not include any notes, comments, or order references in the payment.
+    </Text>
+  </Section>
+);
 
-  // Calculate next dispatch day
+const CardInstructions = ({ order }: { order: OrderDTO }) => {
+  const paymentUrl = `${STORE_URL}/us/order/${order.id}/confirmed`;
   const now = new Date();
-  const dayOfWeek = now.getDay();
-  let nextDispatchDay = "";
-  
-  if (dayOfWeek >= 1 && dayOfWeek <= 3) {
-    nextDispatchDay = "Thursday Morning";
-  } else {
-    nextDispatchDay = "Monday Morning";
-  }
-
-  const customerName = order.customer?.first_name || 
-    order.shipping_address?.first_name || 
-    "there";
+  const day = now.getDay();
+  const dispatchDay = day >= 1 && day <= 3 ? "Thursday morning" : "Monday morning";
 
   return (
-    <Container className="px-8 mb-8">
-      <Section className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-        <Heading className="text-xl font-bold text-gray-800 m-0 mb-4">
-          Hi {customerName},
-        </Heading>
-        <Text className="text-gray-700 text-base leading-relaxed mb-4">
-          Your research protocol is ready and reserved for the <strong>{nextDispatchDay} Dispatch</strong>.
-        </Text>
-        <Text className="text-gray-700 text-base leading-relaxed mb-6">
-          To finalize your order and secure your items, please use our secure payment terminal via the button below.
-        </Text>
-        
-        {/* Payment Button */}
-        <Section className="text-center mb-6">
-          <Link
-            href={paymentUrl}
-            className="inline-block bg-blue-600 text-white px-8 py-4 rounded-lg font-bold text-base"
-            style={{
-              backgroundColor: "#2563eb",
-              color: "#ffffff",
-              textDecoration: "none",
-              display: "inline-block",
-              padding: "16px 32px",
-              borderRadius: "8px",
-              fontWeight: "700",
-              fontSize: "16px",
-            }}
-          >
-            💳 PAY SECURELY WITH CARD
-          </Link>
-        </Section>
-
-        {/* Alternative Methods */}
-        <Section className="bg-white/50 border border-blue-100 rounded p-4">
-          <Text className="text-sm text-gray-700 m-0">
-            <strong>Note:</strong> If you prefer Cash App, PayPal or direct BTC, just reply to this email or{" "}
-            <Link href={whatsappUrl} className="text-blue-600 font-semibold">
-              message Max on WhatsApp
-            </Link>.
-          </Text>
-        </Section>
+    <Section style={{ background: "#00071a", border: "1px solid #3b82f633", borderRadius: 10, padding: "20px 24px", marginBottom: 24 }}>
+      <Heading style={{ color: "#ffffff", fontSize: 18, fontWeight: 700, margin: "0 0 12px" }}>
+        💳 Complete Your Payment
+      </Heading>
+      <Text style={{ color: "#d1d5db", fontSize: 13, margin: "0 0 6px", lineHeight: 1.6 }}>
+        Your order is reserved for the <strong style={{ color: "#ffffff" }}>{dispatchDay} dispatch</strong>.
+        Use the secure payment terminal to finalise your order.
+      </Text>
+      <Section style={{ textAlign: "center", margin: "20px 0" }}>
+        <Link
+          href={paymentUrl}
+          style={{ background: "#b8ff2b", color: "#000000", textDecoration: "none", display: "inline-block", padding: "14px 32px", borderRadius: 8, fontWeight: 700, fontSize: 15 }}
+        >
+          Pay Securely →
+        </Link>
       </Section>
-    </Container>
+      <Text style={{ color: "#6b7280", fontSize: 12, margin: 0 }}>
+        Prefer Cash App, PayPal, or BTC? Reply to this email and we'll assist.
+      </Text>
+    </Section>
   );
 };
 
-// Cash App Payment Instructions
-const CashAppPaymentInstructions = ({ order, formatPrice }: PaymentInstructionProps) => (
-  <Container className="px-8 mb-8">
-    <Section className="bg-[#f0fdf4] border border-green-200 rounded-lg p-6">
-      <Row className="mb-4">
-        <Column>
-          <Heading className="text-xl font-bold text-gray-800 m-0 flex items-center">
-            <span className="text-cashapp mr-2">●</span> Pay via Cash App
-          </Heading>
-        </Column>
-        <Column align="right">
-          <Text className="text-xs font-bold text-gray-400 m-0">
-            FASTEST METHOD
-          </Text>
-        </Column>
-      </Row>
-
-      <Text className="text-gray-800 text-sm mb-4 font-medium">
-        Complete your order in 60 seconds using Bitcoin on Cash App.
-      </Text>
-
-      <Section className="bg-white border border-green-100 rounded-lg p-4 mb-4">
-        {[
-          { num: 1, text: 'Open Cash App and tap the "Bitcoin" tab.' },
-          { num: 2, text: `Buy ${formatPrice(order.total)} worth of BTC.` },
-          { num: 3, text: 'Tap the "Paper Airplane" (Send) icon.' },
-          { num: 4, text: 'Copy the address below and paste it in the "To" field.' },
-        ].map(({ num, text }) => (
-          <Row key={num} className={num < 4 ? "mb-3" : ""}>
-            <Column className="w-8 align-top">
-              <Text className="text-base font-bold text-gray-800 m-0">{num}.</Text>
-            </Column>
-            <Column>
-              <Text className="text-sm text-gray-600 m-0 leading-6" dangerouslySetInnerHTML={{ __html: text }} />
-            </Column>
-          </Row>
-        ))}
-      </Section>
-
-      <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider m-0 mb-2">
-        Copy this address:
-      </Text>
-      <Section className="bg-white border-2 border-dashed border-gray-300 rounded p-4 text-center">
-        <Text className="font-mono text-sm text-gray-800 break-all m-0 select-all">
-          {process.env.NEXT_PUBLIC_BTC_WALLET_ADDRESS}
-        </Text>
-      </Section>
-
-      <Text className="text-xs text-center text-gray-400 mt-2">
-        Order status will update automatically once payment is detected.
-      </Text>
-    </Section>
-  </Container>
+const GenericPaymentInstructions = () => (
+  <Section style={{ background: "#111827", border: "1px solid #374151", borderRadius: 10, padding: "20px 24px", marginBottom: 24 }}>
+    <Text style={{ color: "#d1d5db", fontSize: 13, lineHeight: 1.6, margin: 0 }}>
+      Our team will be in touch shortly with payment instructions. If you need immediate assistance, please reply to this email.
+    </Text>
+  </Section>
 );
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 function OrderPlacedEmailComponent({
   order,
   email_banner,
   paymentProviderID = "unknown",
 }: OrderPlacedEmailProps) {
-  const metaMethod = order.metadata?.payment_method as string | undefined;
+  const meta = order.metadata?.payment_method as string | undefined;
 
-  // Payment type detection
-  const isCrypto =
-    paymentProviderID === "crypto-manual" ||
-    paymentProviderID === "pp_crypto-manual_crypto-manual" ||
-    metaMethod === "BTC" ||
-    metaMethod === "CRYPTO";
+  const isCashApp = paymentProviderID.includes("cash-app") || meta === "CASHAPP";
+  const isCrypto = paymentProviderID.includes("crypto-manual") || meta === "BTC" || meta === "CRYPTO";
+  const isPayPal = paymentProviderID.includes("paypal-manual") || meta === "PAYPAL";
+  const isCard = paymentProviderID.includes("card-manual") || meta === "CARD";
 
-  const isManualSystem =
-    paymentProviderID === "pp_system_default" ||
-    paymentProviderID === "manual" ||
-    metaMethod === "MANUAL";
-
-  const isCashApp =
-    paymentProviderID === "cash-app" ||
-    paymentProviderID === "pp_cash-app_cash-app" ||
-    metaMethod === "CASHAPP";
-
-  const isPayPal =
-    paymentProviderID === "paypal-manual" ||
-    paymentProviderID === "pp_paypal-manual_paypal-manual" ||
-    metaMethod === "PAYPAL";
-
-    const isCard =
-    paymentProviderID === "card-manual" ||
-    paymentProviderID === "pp_card-manual_card-manual" ||
-    metaMethod === "CARD";
-
-  const btcAmount =
-    order.metadata?.amount_btc !== undefined &&
-    order.metadata?.amount_btc !== null
-      ? String(order.metadata.amount_btc)
-      : null;
-
-  const shouldDisplayBanner = email_banner && "title" in email_banner;
+  const btcAmount = order.metadata?.amount_btc != null ? String(order.metadata.amount_btc) : null;
 
   const formatter = new Intl.NumberFormat([], {
     style: "currency",
     currencyDisplay: "narrowSymbol",
-    currency: order.currency_code,
+    currency: order.currency_code || "USD",
   });
 
-  const formatPrice = (price: BigNumberValue) => {
-    if (typeof price === "number") {
-      return formatter.format(price);
-    }
+  const formatPrice = (price: BigNumberValue): string => {
+    const n = Number(price as any);
+    if (!Number.isNaN(n) && n !== 0) return formatter.format(n);
+    if (typeof price === "number") return formatter.format(price);
     if (typeof price === "string") {
-      return formatter.format(parseFloat(price));
+      const p = parseFloat(price);
+      return Number.isNaN(p) ? price : formatter.format(p);
     }
-    return price?.toString() || "";
+    return String(price ?? "");
   };
 
+  const customerName =
+    order.customer?.first_name || order.shipping_address?.first_name || "there";
+
+  const orderUrl = `${STORE_URL}/us/account/orders/details/${order.id}`;
+
   return (
-    <Tailwind
-      config={{
-        theme: {
-          extend: {
-            colors: {
-              brand: "#27272a",
-              btc: "#F7931A",
-              usdt: "#26A17B",
-              cashapp: "#059669",
-            },
-          },
-        },
-      }}
-    >
-      <Html className="font-sans bg-gray-100">
+    <Tailwind config={{ theme: { extend: { colors: { brand: "#111111" } } } }}>
+      <Html style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}>
         <Head />
-        {/* Using a template string to avoid type errors */}
-        <Preview>{`Order Confirmation #ONX-${order.display_id}`}</Preview>
+        <Preview>Order confirmed #{`ONX-${order.display_id}`} — complete your payment</Preview>
+        <Body style={{ background: "#0a0a0a", margin: 0, padding: "32px 0" }}>
+          <Container style={{ maxWidth: 580, margin: "0 auto" }}>
 
-        <Body className="bg-white my-10 mx-auto w-full max-w-2xl shadow-sm rounded-md overflow-hidden">
-          {/* Header */}
-          <Section className="bg-brand text-white px-6 py-6">
-            <Row>
-              <Column>
-                <Text className="text-xl font-bold m-0 tracking-wide uppercase">
-                  Onyx Genetics Store
-                </Text>
-              </Column>
-              <Column align="right">
-                <Text className="text-gray-400 text-xs m-0">
-                  Order #ONX-{order.display_id}
-                </Text>
-              </Column>
-            </Row>
-          </Section>
-
-          {/* Greeting */}
-          <Container className="p-8">
-            <Heading className="text-2xl font-bold text-gray-800 m-0 mb-4">
-              Hi{" "}
-              {order.customer?.first_name ||
-                order.shipping_address?.first_name ||
-                "there"}
-              ,
-            </Heading>
-            <Text className="text-gray-600 text-base leading-relaxed m-0">
-              Thank you for your order! We have received your request.
-            </Text>
-          </Container>
-
-          {/* Payment Instructions */}
-          {isCrypto && <CryptoPaymentInstructions order={order} formatPrice={formatPrice} btcAmount={btcAmount} />}
-          {isManualSystem && <ManualPaymentInstructions />}
-          {isPayPal && <PayPalPaymentInstructions order={order} formatPrice={formatPrice} btcAmount={btcAmount} />}
-          {isCashApp && <CashAppPaymentInstructions order={order} formatPrice={formatPrice} btcAmount={btcAmount} />}
-          {isCard && <CardPaymentInstructions order={order} />}
-
-          {/* Payment Confirmation Request */}
-          {!isManualSystem && <PaymentConfirmationSection />}
-
-          <Hr className="border-gray-200 mx-8 my-6" />
-
-          {/* Promotional Banner */}
-          {shouldDisplayBanner && (
-            <Container
-              className="mb-4 rounded-lg p-7"
-              style={{
-                background: "linear-gradient(to right, #3b82f6, #4f46e5)",
-              }}
-            >
-              <Section>
-                <Row>
-                  <Column align="left">
-                    <Heading className="text-white text-xl font-semibold">
-                      {email_banner.title}
-                    </Heading>
-                    <Text className="text-white mt-2">{email_banner.body}</Text>
-                  </Column>
-                  <Column align="right">
-                    <Link
-                      href={email_banner.url}
-                      className="font-semibold px-2 text-white underline"
-                    >
-                      Shop Now
-                    </Link>
-                  </Column>
-                </Row>
-              </Section>
-            </Container>
-          )}
-
-          {/* Order Items */}
-          <Container className="px-6">
-            <Heading className="text-xl font-semibold text-gray-800 mb-4">
-              Your Items
-            </Heading>
-            <Row>
-              <Column>
-                <Text className="text-sm m-0 my-2 text-gray-500">
-                  Order ID: #ONX-{order.display_id}
-                </Text>
-              </Column>
-            </Row>
-            {order.items?.map((item) => (
-              <Section key={item.id} className="border-b border-gray-100 py-4">
-                <Row>
-                  {/* 1. Thumbnail (W-16 ~ 64px) */}
-                  <Column className="w-[64px] align-top pr-4">
-                    <Img
-                      src={item.thumbnail ?? ""}
-                      alt={item.product_title ?? ""}
-                      className="rounded bg-gray-100 object-cover"
-                      width="64"
-                      height="64"
-                    />
-                  </Column>
-
-                  {/* 2. Product Details */}
-                  <Column className="align-top">
-                    <Text className="text-sm font-semibold text-gray-900 m-0 mb-1 leading-tight">
-                      {item.product_title}
-                    </Text>
-                    <Text className="text-xs text-gray-500 m-0">
-                      {item.variant_title}
-                    </Text>
-                  </Column>
-
-                  {/* 3. Price & Quantity (Right Aligned) */}
-                  <Column className="align-top text-right w-[100px]">
-                    {/* Quantity x Unit Price */}
-                    <Text className="text-xs text-gray-500 m-0 mb-1">
-                      <span className="font-medium text-gray-800">
-                        {item.quantity}
-                      </span>{" "}
-                      x {formatPrice(item.unit_price)}
-                    </Text>
-
-                    {/* Total Line Price */}
-                    <Text className="text-sm font-bold text-gray-900 m-0">
-                      {formatPrice(item.total)}
-                    </Text>
-                  </Column>
-                </Row>
-              </Section>
-            ))}
-
-            {/* Order Summary */}
-            <Section className="mt-8">
-              <Heading className="text-xl font-semibold text-gray-800 mb-4">
-                Order Summary
-              </Heading>
-              <Row className="text-gray-600">
-                <Column className="w-1/2">
-                  <Text className="m-0">Subtotal</Text>
+            {/* Header */}
+            <Section style={{ background: "#000000", borderRadius: "12px 12px 0 0", padding: "20px 24px" }}>
+              <Row>
+                <Column>
+                  <Text style={{ color: "#b8ff2b", fontSize: 18, fontWeight: 800, letterSpacing: 2, textTransform: "uppercase", margin: 0 }}>
+                    ONYX GENETICS
+                  </Text>
                 </Column>
-                <Column className="w-1/2 text-right">
-                  <Text className="m-0">{formatPrice(order.item_total)}</Text>
-                </Column>
-              </Row>
-              {order.shipping_methods?.map((method) => (
-                <Row className="text-gray-600" key={method.id}>
-                  <Column className="w-1/2">
-                    <Text className="m-0">{method.name}</Text>
-                  </Column>
-                  <Column className="w-1/2 text-right">
-                    <Text className="m-0">{formatPrice(method.total)}</Text>
-                  </Column>
-                </Row>
-              ))}
-              <Row className="text-gray-600">
-                <Column className="w-1/2">
-                  <Text className="m-0">Tax</Text>
-                </Column>
-                <Column className="w-1/2 text-right">
-                  <Text className="m-0">
-                    {formatPrice(order.tax_total || 0)}
+                <Column align="right">
+                  <Text style={{ color: "#6b7280", fontSize: 12, margin: 0 }}>
+                    #{`ONX-${order.display_id}`}
                   </Text>
                 </Column>
               </Row>
-              <Row className="border-t border-gray-200 mt-4 text-gray-800 font-bold">
-                <Column className="w-1/2">
-                  <Text>Total</Text>
-                </Column>
-                <Column className="w-1/2 text-right">
-                  <Text>{formatPrice(order.total)}</Text>
-                </Column>
-              </Row>
             </Section>
-          </Container>
 
-          {/* Footer */}
-          <Section className="bg-gray-50 p-6 mt-10">
-            <Text className="text-center text-gray-500 text-sm">
-              If you have any questions, reply to this email or contact our
-              support team at sales@onyxgenetics.com.
-            </Text>
-            <Text className="text-center text-gray-500 text-sm">
-              Order Token: {order.id}
-            </Text>
-            <Text className="text-center text-gray-400 text-xs mt-4">
-              © {new Date().getFullYear()} Onyx Genetics, Inc. All rights
-              reserved.
-            </Text>
-          </Section>
+            {/* Hero */}
+            <Section style={{ background: "#111111", padding: "28px 24px 20px", borderLeft: "1px solid #1f1f1f", borderRight: "1px solid #1f1f1f" }}>
+              <Heading style={{ color: "#ffffff", fontSize: 24, fontWeight: 700, margin: "0 0 8px" }}>
+                Order confirmed ✓
+              </Heading>
+              <Text style={{ color: "#9ca3af", fontSize: 14, margin: "0 0 16px", lineHeight: 1.6 }}>
+                Hi {customerName}, thanks for your order. Complete the payment below to get your items dispatched.
+              </Text>
+              <Hr style={{ borderColor: "#1f1f1f", margin: "0" }} />
+            </Section>
+
+            {/* Payment Instructions */}
+            <Section style={{ background: "#111111", padding: "16px 14px 4px", borderLeft: "1px solid #1f1f1f", borderRight: "1px solid #1f1f1f" }}>
+              {isCashApp && <CashAppInstructions order={order} formatPrice={formatPrice} btcAmount={btcAmount} />}
+              {isCrypto && <CryptoInstructions order={order} formatPrice={formatPrice} btcAmount={btcAmount} />}
+              {isPayPal && <PayPalInstructions order={order} formatPrice={formatPrice} btcAmount={btcAmount} />}
+              {isCard && <CardInstructions order={order} />}
+              {!isCashApp && !isCrypto && !isPayPal && !isCard && <GenericPaymentInstructions />}
+
+              {/* Screenshot request — all methods */}
+              <PaymentConfirmationSection />
+            </Section>
+
+            <Hr style={{ borderColor: "#1f1f1f", margin: 0 }} />
+
+            {/* Promo banner */}
+            {email_banner && "title" in email_banner && (
+              <Section style={{ background: "#111111", padding: "0 24px 20px", borderLeft: "1px solid #1f1f1f", borderRight: "1px solid #1f1f1f" }}>
+                <Section style={{ background: "linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%)", border: "1px solid #b8ff2b33", borderRadius: 10, padding: "16px 20px" }}>
+                  <Row>
+                    <Column>
+                      <Text style={{ color: "#b8ff2b", fontSize: 14, fontWeight: 700, margin: "0 0 4px" }}>{email_banner.title}</Text>
+                      <Text style={{ color: "#9ca3af", fontSize: 13, margin: 0 }}>{email_banner.body}</Text>
+                    </Column>
+                    <Column align="right" style={{ width: 80 }}>
+                      <Link href={email_banner.url} style={{ color: "#b8ff2b", fontSize: 12, fontWeight: 700, textDecoration: "none" }}>
+                        Shop →
+                      </Link>
+                    </Column>
+                  </Row>
+                </Section>
+              </Section>
+            )}
+
+            {/* Order Items */}
+            <Section style={{ background: "#111111", padding: "20px 24px", borderLeft: "1px solid #1f1f1f", borderRight: "1px solid #1f1f1f" }}>
+              <Text style={{ color: "#ffffff", fontSize: 15, fontWeight: 700, margin: "0 0 16px" }}>
+                Your items
+              </Text>
+              {order.items?.map((item) => (
+                <Section key={item.id} style={{ borderBottom: "1px solid #1f1f1f", paddingBottom: 14, marginBottom: 14 }}>
+                  <Row>
+                    <Column style={{ width: 56 }}>
+                      <Img src={item.thumbnail ?? ""} alt={item.product_title ?? ""} width="48" height="48" style={{ borderRadius: 6, background: "#1a1a1a", display: "block" }} />
+                    </Column>
+                    <Column>
+                      <Text style={{ color: "#ffffff", fontSize: 13, fontWeight: 600, margin: "0 0 2px", lineHeight: 1.4 }}>
+                        {item.product_title}
+                      </Text>
+                      <Text style={{ color: "#6b7280", fontSize: 12, margin: 0 }}>
+                        {item.variant_title}
+                      </Text>
+                    </Column>
+                    <Column align="right" style={{ width: 90 }}>
+                      <Text style={{ color: "#6b7280", fontSize: 11, margin: "0 0 2px" }}>
+                        {item.quantity}× {formatPrice(item.unit_price)}
+                      </Text>
+                      <Text style={{ color: "#ffffff", fontSize: 13, fontWeight: 700, margin: 0 }}>
+                        {formatPrice(item.total)}
+                      </Text>
+                    </Column>
+                  </Row>
+                </Section>
+              ))}
+
+              {/* Summary */}
+              <Section style={{ marginTop: 8 }}>
+                {[
+                  { label: "Subtotal", value: formatPrice(order.item_total) },
+                  ...(order.shipping_methods?.map((m) => ({ label: m.name ?? "Shipping", value: formatPrice(m.total) })) ?? []),
+                  { label: "Tax", value: formatPrice(order.tax_total || 0) },
+                ].map(({ label, value }) => (
+                  <Row key={label} style={{ marginBottom: 4 }}>
+                    <Column><Text style={{ color: "#6b7280", fontSize: 13, margin: 0 }}>{label}</Text></Column>
+                    <Column align="right"><Text style={{ color: "#9ca3af", fontSize: 13, margin: 0 }}>{value}</Text></Column>
+                  </Row>
+                ))}
+                <Hr style={{ borderColor: "#1f1f1f", margin: "10px 0" }} />
+                <Row>
+                  <Column><Text style={{ color: "#ffffff", fontSize: 15, fontWeight: 700, margin: 0 }}>Total</Text></Column>
+                  <Column align="right"><Text style={{ color: "#b8ff2b", fontSize: 16, fontWeight: 800, margin: 0 }}>{formatPrice(order.total)}</Text></Column>
+                </Row>
+              </Section>
+            </Section>
+
+            {/* CTA */}
+            <Section style={{ background: "#111111", padding: "20px 24px", borderLeft: "1px solid #1f1f1f", borderRight: "1px solid #1f1f1f" }}>
+              <Section style={{ textAlign: "center" }}>
+                <Link
+                  href={orderUrl}
+                  style={{ background: "#1f1f1f", color: "#9ca3af", textDecoration: "none", display: "inline-block", padding: "11px 28px", borderRadius: 8, fontSize: 13, border: "1px solid #2a2a2a" }}
+                >
+                  View order details
+                </Link>
+              </Section>
+            </Section>
+
+            {/* Footer */}
+            <Section style={{ background: "#000000", borderRadius: "0 0 12px 12px", padding: "20px 24px", borderLeft: "1px solid #1f1f1f", borderRight: "1px solid #1f1f1f", borderBottom: "1px solid #1f1f1f" }}>
+              <Text style={{ color: "#6b7280", fontSize: 12, textAlign: "center", margin: "0 0 4px", lineHeight: 1.6 }}>
+                Questions? Reply to this email or contact{" "}
+                <Link href="mailto:sales@onyxgenetics.com" style={{ color: "#9ca3af" }}>sales@onyxgenetics.com</Link>
+              </Text>
+              <Text style={{ color: "#374151", fontSize: 11, textAlign: "center", margin: 0 }}>
+                © {new Date().getFullYear()} Onyx Genetics. All rights reserved.
+              </Text>
+            </Section>
+
+          </Container>
         </Body>
       </Html>
     </Tailwind>
