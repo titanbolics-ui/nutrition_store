@@ -305,7 +305,7 @@ function OrderPlacedEmailComponent({
                     </Column>
                     <Column align="right" style={{ width: 90 }}>
                       <Text style={{ color: "#6b7280", fontSize: 11, margin: "0 0 2px" }}>
-                        {item.quantity}× {formatPrice(item.unit_price)}
+                        {Number(item.quantity)}× {formatPrice(item.unit_price)}
                       </Text>
                       <Text style={{ color: "#ffffff", fontSize: 13, fontWeight: 700, margin: 0 }}>
                         {formatPrice(item.total)}

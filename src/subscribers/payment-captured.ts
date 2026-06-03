@@ -72,8 +72,12 @@ export default async function paymentCapturedHandler({
       "display_id",
       "email",
       "total",
+      "item_total",
+      "shipping_total",
+      "tax_total",
       "currency_code",
       "shipping_address.*",
+      "items.*",
     ],
     variables: {
       id: orderId,

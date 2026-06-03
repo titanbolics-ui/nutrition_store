@@ -56,7 +56,7 @@ function OrderPaidEmailComponent({ order }: OrderPaidEmailProps) {
   const steps = [
     { done: true,  label: "Payment received", sub: `${formatPrice(order.total)} confirmed` },
     { done: false, label: "Warehouse preparing your items", sub: `Dispatch scheduled: ${dispatchDate}` },
-    { done: false, label: "Tracking number sent", sub: "Email when your package ships" },
+    { done: false, label: "Tracking number sent", sub: "5–8 days after dispatch, by email" },
   ];
 
   return (
@@ -165,7 +165,7 @@ function OrderPaidEmailComponent({ order }: OrderPaidEmailProps) {
                         {item.product_title}
                       </Text>
                       <Text style={{ color: "#6b7280", fontSize: 12, margin: 0 }}>
-                        {item.variant_title} · qty {item.quantity}
+                        {item.variant_title} · qty {Number(item.quantity)}
                       </Text>
                     </Column>
                   </Row>
@@ -179,7 +179,7 @@ function OrderPaidEmailComponent({ order }: OrderPaidEmailProps) {
                 📦 Scheduled for {dispatchDay} dispatch
               </Text>
               <Text style={{ color: "#4b5563", fontSize: 12, margin: 0, lineHeight: 1.6 }}>
-                Your order will be packed and shipped on <strong style={{ color: "#6b7280" }}>{dispatchDate}</strong>. You will receive a separate email with your tracking number once it leaves the warehouse.
+                Your order will be packed and shipped on <strong style={{ color: "#6b7280" }}>{dispatchDate}</strong>. Tracking numbers are sent <strong style={{ color: "#6b7280" }}>5–8 days after shipping</strong> — you will receive a separate email once available.
               </Text>
             </Section>
 

@@ -163,7 +163,7 @@ function OrderShippedEmailComponent({
             </Section>
 
             <Text className="text-center text-gray-500 text-sm">
-              You&apos;ll receive another email once your order is delivered.
+              If tracking isn&apos;t showing yet, check back in <strong>5–8 days after dispatch</strong> — tracking numbers activate once the package clears customs.
             </Text>
           </Container>
 
