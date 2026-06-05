@@ -1,7 +1,7 @@
 import { MedusaContainer } from "@medusajs/types"
 import { Modules } from "@medusajs/framework/utils"
 import { createOrderShipmentWorkflow } from "@medusajs/core-flows"
-import { google, sheets_v4 } from "googleapis"
+import { auth as googleAuth, sheets as sheetsClient, sheets_v4 } from "@googleapis/sheets"
 
 // ─── Warehouse sheet configs ──────────────────────────────────────────────────
 // Add a new block per warehouse when ready. Leave SPREADSHEET_ID empty to skip.
@@ -48,7 +48,7 @@ function buildAuth() {
     throw new Error("GOOGLE_SERVICE_ACCOUNT_KEY must be a JSON string or base64-encoded JSON")
   }
 
-  return new google.auth.GoogleAuth({
+  return new googleAuth.GoogleAuth({
     credentials,
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],
   })
@@ -281,7 +281,7 @@ export default async function syncTrackingFromSheets(container: MedusaContainer)
 
   let sheets: sheets_v4.Sheets
   try {
-    sheets = google.sheets({ version: "v4", auth: buildAuth() })
+    sheets = sheetsClient({ version: "v4", auth: buildAuth() })
   } catch (err: any) {
     logger.error(`❌ Google auth failed: ${err.message}`)
     return

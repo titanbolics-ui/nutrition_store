@@ -28,6 +28,7 @@
     "react-dom": "18.3.1"
   },
   "dependencies": {
+    "@googleapis/sheets": "^13.0.2",
     "@medusajs/admin-sdk": "2.11.3",
     "@medusajs/cli": "2.11.3",
     "@medusajs/draft-order": "2.11.3",
@@ -38,7 +39,6 @@
     "@medusajs/ui": "^4.0.27",
     "@react-email/components": "^1.0.1",
     "@react-email/render": "^2.0.0",
-    "googleapis": "^173.0.0",
     "nodemailer": "^8.0.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
