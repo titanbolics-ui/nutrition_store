@@ -19,6 +19,11 @@ module.exports = defineConfig({
   },
   admin: {
     backendUrl: process.env.MEDUSA_BACKEND_URL,
+    vite: () => ({
+      resolve: {
+        dedupe: ["react", "react-dom", "react-router-dom", "@tanstack/react-query"],
+      },
+    }),
   },
   modules: [
     {
@@ -129,5 +134,8 @@ module.exports = defineConfig({
         },
       },
     },
+  ],
+  plugins: [
+    { resolve: "@medusajs/loyalty-plugin" },
   ],
 });
