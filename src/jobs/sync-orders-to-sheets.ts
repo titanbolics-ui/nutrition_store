@@ -143,7 +143,7 @@ async function insertRowsAtTop(
     const sheet = meta.data.sheets?.find(
       (s) => s.properties?.title === tabName
     )
-    if (!sheet?.properties?.sheetId == null) {
+    if (!sheet) {
       logger.error(`  ❌ Sheet tab "${tabName}" not found`)
       return
     }

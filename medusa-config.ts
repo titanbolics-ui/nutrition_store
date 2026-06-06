@@ -136,6 +136,6 @@ module.exports = defineConfig({
     },
   ],
   plugins: [
-    { resolve: "@medusajs/loyalty-plugin" },
+    { resolve: "@medusajs/loyalty-plugin", options: {} },
   ],
 });

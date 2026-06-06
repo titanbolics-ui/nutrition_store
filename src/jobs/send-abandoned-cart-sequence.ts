@@ -150,10 +150,9 @@ export default async function abandonedCartSequenceJob(
         entity: "cart",
         fields: ["id", "email", "items.*", "metadata", "customer.*", "shipping_address.*"],
         filters: {
-          updated_at: { $lt: twentyFourHoursAgo },
+          updated_at: { $lt: twentyFourHoursAgo, $gt: CUTOFF_DATE },
           email: { $ne: null },
           completed_at: null,
-          $gt: CUTOFF_DATE,
         },
         pagination: { skip: 0, take: 100 },
       })
