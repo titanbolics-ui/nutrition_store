@@ -289,36 +289,11 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
     if (Object.keys(warehouseMeta).length > 0) {
       for (const [locId, meta] of Object.entries(warehouseMeta)) {
         const matched = meta.items.map((mi) => {
-          // Try matching by exact title, then product_title
           const full = itemByTitle.get(mi.title)
           if (full) return { ...full, quantity: mi.quantity }
-          // Fallback: return metadata item (no unit_price available)
           return { product_title: mi.title, title: mi.title, quantity: mi.quantity, unit_price: 0 }
         })
         warehouseItemsMap.set(locId, matched)
-      }
-
-      // Items not in warehouse_items metadata (e.g. non-inventory items) go into whichever
-      // warehouse already has the most items from this order.
-      const coveredTitles = new Set<string>()
-      for (const items of warehouseItemsMap.values()) {
-        for (const item of items) {
-          if (item.product_title) coveredTitles.add(item.product_title)
-          if (item.title) coveredTitles.add(item.title)
-        }
-      }
-      const uncovered = orderItems.filter(
-        (item) => !coveredTitles.has(item.product_title) && !coveredTitles.has(item.title)
-      )
-      if (uncovered.length > 0) {
-        let targetLocId = ""
-        let maxSize = 0
-        for (const [locId, items] of warehouseItemsMap) {
-          if (items.length > maxSize) { maxSize = items.length; targetLocId = locId }
-        }
-        if (targetLocId) {
-          warehouseItemsMap.get(targetLocId)!.push(...uncovered)
-        }
       }
     } else {
       // No warehouse metadata — assign all items to the first configured warehouse
