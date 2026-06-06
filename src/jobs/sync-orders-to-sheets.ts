@@ -241,6 +241,7 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
   })
 
   logger.info(`  Found ${orders.length} captured order(s) in the last 60 days`)
+  logger.info(`  Configured warehouses: ${WAREHOUSE_SHEETS.map((w) => `${w.name}=${w.locationId}`).join(", ")}`)
   if (!orders.length) return
 
   // 2. Pre-load existing order numbers from each sheet tab
@@ -295,6 +296,29 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
           return { product_title: mi.title, title: mi.title, quantity: mi.quantity, unit_price: 0 }
         })
         warehouseItemsMap.set(locId, matched)
+      }
+
+      // Items not in warehouse_items metadata (e.g. non-inventory items) go into whichever
+      // warehouse already has the most items from this order.
+      const coveredTitles = new Set<string>()
+      for (const items of warehouseItemsMap.values()) {
+        for (const item of items) {
+          if (item.product_title) coveredTitles.add(item.product_title)
+          if (item.title) coveredTitles.add(item.title)
+        }
+      }
+      const uncovered = orderItems.filter(
+        (item) => !coveredTitles.has(item.product_title) && !coveredTitles.has(item.title)
+      )
+      if (uncovered.length > 0) {
+        let targetLocId = ""
+        let maxSize = 0
+        for (const [locId, items] of warehouseItemsMap) {
+          if (items.length > maxSize) { maxSize = items.length; targetLocId = locId }
+        }
+        if (targetLocId) {
+          warehouseItemsMap.get(targetLocId)!.push(...uncovered)
+        }
       }
     } else {
       // No warehouse metadata — assign all items to the first configured warehouse

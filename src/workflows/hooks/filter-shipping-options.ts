@@ -99,7 +99,10 @@ async function buildWarehouseMapping(
     let locationId: string | null = null
     let locationName: string | null = null
 
-    // Inventory-tracked items: use inventory levels
+    // Use inventory levels to determine warehouse.
+    // Non-inventory items are skipped here — with a single shared shipping profile
+    // across multiple warehouses the profile→location map is ambiguous.
+    // sync-orders-to-sheets consolidates unmatched items with the rest of the order.
     if (item.variant?.manage_inventory) {
       for (const invItem of item.variant?.inventory_items ?? []) {
         const level = invItem.inventory?.location_levels?.[0]
@@ -108,16 +111,6 @@ async function buildWarehouseMapping(
           locationName = level.stock_locations?.[0]?.name ?? level.location_id
           break
         }
-      }
-    }
-
-    // Non-inventory items: use shipping profile → location map
-    if (!locationId) {
-      const profileId = item.variant?.product?.shipping_profile_id
-      if (profileId && profileToLocation.has(profileId)) {
-        const loc = profileToLocation.get(profileId)!
-        locationId = loc.locationId
-        locationName = loc.locationName
       }
     }
 
