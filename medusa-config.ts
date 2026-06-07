@@ -137,5 +137,11 @@ module.exports = defineConfig({
   ],
   plugins: [
     { resolve: "@medusajs/loyalty-plugin", options: {} },
+    {
+      resolve: "@medusajs/analytics-posthog",
+      options: {
+        posthog_api_key: process.env.POSTHOG_API_KEY,
+      },
+    },
   ],
 });
