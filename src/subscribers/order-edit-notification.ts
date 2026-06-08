@@ -15,6 +15,7 @@ function parseNum(v: unknown): number {
 type RawAction = {
   action: string
   details?: Record<string, unknown> | null
+  order_change_id?: string
 }
 
 export type ResolvedChange = {

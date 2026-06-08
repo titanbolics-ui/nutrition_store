@@ -150,7 +150,7 @@ async function applyDiscount({ id, amount, reason, query, orderSvc, req, res }: 
       order_change_id: orderChange.id,
       order_id:        id,
       version:         orderChange.version,
-      action:          ChangeActionType.ITEM_ADJUSTMENTS_REPLACE as string,
+      action:          ChangeActionType.ITEM_ADJUSTMENTS_REPLACE,
       details: {
         reference_id: lineItemId,
         adjustments:  [...nonManual, ...manualAdj],
