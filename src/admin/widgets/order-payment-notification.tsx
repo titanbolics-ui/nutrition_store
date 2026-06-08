@@ -30,13 +30,16 @@ const OrderPaymentNotificationWidget = ({ data }: { data: any }) => {
     data?.payment_collections?.[0]?.payment_sessions?.[0]?.provider_id ||
     ""
 
-  if (!(pendingDiff > 0)) return null
-
-  const formatted = new Intl.NumberFormat([], {
+  const formatter = new Intl.NumberFormat([], {
     style: "currency",
     currencyDisplay: "narrowSymbol",
     currency: currencyCode,
-  }).format(pendingDiff)
+  })
+
+  // Nothing to show if no outstanding balance in either direction
+  if (pendingDiff === 0) return null
+
+  const isRefundDue = pendingDiff < 0
 
   const handleSend = async () => {
     setSending(true)
@@ -63,6 +66,26 @@ const OrderPaymentNotificationWidget = ({ data }: { data: any }) => {
     }
   }
 
+  if (isRefundDue) {
+    return (
+      <Container className="divide-y divide-ui-border-base p-0">
+        <div className="px-6 py-4 flex items-start gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ui-bg-subtle flex-shrink-0">
+            <CurrencyDollar className="text-ui-fg-subtle" />
+          </div>
+          <div>
+            <Text size="small" weight="plus" className="text-ui-fg-base leading-tight">
+              Refund due
+            </Text>
+            <Text size="small" className="text-ui-fg-subtle leading-tight">
+              {formatter.format(Math.abs(pendingDiff))} to be refunded to customer
+            </Text>
+          </div>
+        </div>
+      </Container>
+    )
+  }
+
   return (
     <Container className="divide-y divide-ui-border-base p-0">
       <div className="px-6 py-4 flex items-start justify-between gap-4">
@@ -75,7 +98,7 @@ const OrderPaymentNotificationWidget = ({ data }: { data: any }) => {
               Payment outstanding
             </Text>
             <Text size="small" className="text-ui-fg-subtle leading-tight">
-              {formatted} due from customer
+              {formatter.format(pendingDiff)} due from customer
             </Text>
           </div>
         </div>

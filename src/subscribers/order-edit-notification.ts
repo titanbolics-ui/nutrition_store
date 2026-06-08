@@ -1,5 +1,5 @@
 import { SubscriberArgs, type SubscriberConfig } from "@medusajs/framework"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 
 function parseNum(v: unknown): number {
   if (typeof v === "number") return v
@@ -113,6 +113,34 @@ export default async function orderEditNotificationHandler({
   if (data.no_notification) {
     logger.info(`[order-edit-notification] Skipping ${eventName} — no_notification=true`)
     return
+  }
+
+  // Skip when only adjustments changed (e.g. manual discount) — no item add/remove/update
+  const ITEM_CHANGE_ACTIONS = ["ITEM_ADD", "ITEM_REMOVE", "ITEM_UPDATE"]
+  const hasItemChanges = (data.actions ?? []).some(
+    (a: RawAction) => ITEM_CHANGE_ACTIONS.includes(a.action)
+  )
+  if (!hasItemChanges) {
+    logger.info(`[order-edit-notification] Skipping ${eventName} — adjustment-only change, no items modified`)
+    return
+  }
+
+  // Check no_notification flag stored in order change metadata
+  const orderChangeId = (data.actions ?? []).find((a: any) => a.order_change_id)?.order_change_id
+  if (orderChangeId) {
+    try {
+      const orderSvc = container.resolve(Modules.ORDER) as any
+      const [orderChange] = await orderSvc.listOrderChanges(
+        { id: orderChangeId },
+        { select: ["id", "metadata"] }
+      )
+      if (orderChange?.metadata?.no_notification === true) {
+        logger.info(`[order-edit-notification] Skipping ${eventName} — no_notification=true in order change metadata`)
+        return
+      }
+    } catch (e: any) {
+      logger.warn(`[order-edit-notification] Could not check order change metadata: ${e.message}`)
+    }
   }
 
   logger.info(`[order-edit-notification] ${eventName} for order ${data.order_id}`)
