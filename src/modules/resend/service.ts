@@ -22,6 +22,9 @@ import { abandonedCartTrustEmail } from "./emails/abandoned-cart-trust";
 import { abandonedCartFinalEmail } from "./emails/abandoned-cart-final";
 import { orderTransferRequestedEmail } from "./emails/order-transfer-requested";
 import { customerWelcomeEmail } from "./emails/customer-welcome";
+import { orderEditRequestedEmail } from "./emails/order-edit-requested";
+import { orderEditConfirmedEmail } from "./emails/order-edit-confirmed";
+import { paymentNotificationEmail } from "./emails/payment-notification";
 
 type ResendOptions = {
   api_key?: string;
@@ -58,6 +61,9 @@ enum Templates {
   ABANDONED_CART_FINAL = "abandoned-cart-final",
   ORDER_TRANSFER_REQUESTED = "order-transfer-requested",
   CUSTOMER_WELCOME = "customer-welcome",
+  ORDER_EDIT_REQUESTED = "order-edit-requested",
+  ORDER_EDIT_CONFIRMED = "order-edit-confirmed",
+  PAYMENT_NOTIFICATION = "payment-notification",
 }
 
 const templates: { [key in Templates]?: (props: unknown) => React.ReactNode } =
@@ -74,6 +80,9 @@ const templates: { [key in Templates]?: (props: unknown) => React.ReactNode } =
     [Templates.ABANDONED_CART_FINAL]: abandonedCartFinalEmail,
     [Templates.ORDER_TRANSFER_REQUESTED]: orderTransferRequestedEmail,
     [Templates.CUSTOMER_WELCOME]: customerWelcomeEmail,
+    [Templates.ORDER_EDIT_REQUESTED]: orderEditRequestedEmail,
+    [Templates.ORDER_EDIT_CONFIRMED]: orderEditConfirmedEmail,
+    [Templates.PAYMENT_NOTIFICATION]: paymentNotificationEmail,
   };
 
 class ResendNotificationProviderService extends AbstractNotificationProviderService {
@@ -176,6 +185,12 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
         return "Confirm order transfer request";
       case Templates.CUSTOMER_WELCOME:
         return "Welcome to Onyx Genetics";
+      case Templates.ORDER_EDIT_REQUESTED:
+        return "Action required: confirm changes to your order";
+      case Templates.ORDER_EDIT_CONFIRMED:
+        return "Your order has been updated";
+      case Templates.PAYMENT_NOTIFICATION:
+        return "Payment required for your updated order";
       default:
         return "New Email";
     }
