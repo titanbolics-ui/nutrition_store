@@ -136,6 +136,7 @@ module.exports = defineConfig({
     },
   ],
   plugins: [
+    { resolve: "@agilo/medusa-analytics-plugin", options: {} },
     { resolve: "@medusajs/loyalty-plugin", options: {} },
     {
       resolve: "@medusajs/analytics-posthog",

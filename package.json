@@ -28,6 +28,7 @@
     "react-dom": "18.3.1"
   },
   "dependencies": {
+    "@agilo/medusa-analytics-plugin": "^1.4.0",
     "@googleapis/sheets": "^13.0.2",
     "@medusajs/admin-sdk": "^2.15.5",
     "@medusajs/analytics-posthog": "^2.15.5",
