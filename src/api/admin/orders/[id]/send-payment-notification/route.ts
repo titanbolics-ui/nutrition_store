@@ -1,4 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { MAGIC_TOKEN_MODULE } from "../../../../../modules/magic-token"
 
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const { id } = req.params
@@ -10,6 +11,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
   const query = req.scope.resolve("query")
   const notificationService = req.scope.resolve("notification")
+  const magicTokenSvc = req.scope.resolve(MAGIC_TOKEN_MODULE) as any
 
   const { data: orders } = await query.graph({
     entity: "order",
@@ -21,6 +23,12 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
   if (!order?.email) {
     return res.status(404).json({ message: "Order not found" })
   }
+
+  const orderViewToken = await magicTokenSvc.generateToken({
+    email: order.email,
+    type: "order_view",
+    orderId: id,
+  })
 
   await notificationService.createNotifications({
     to: order.email,
@@ -35,6 +43,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       },
       amountDue: amount_due,
       providerId: provider_id || "",
+      orderViewToken,
     },
   })
 
