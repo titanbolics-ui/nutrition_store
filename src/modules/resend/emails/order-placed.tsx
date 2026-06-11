@@ -16,11 +16,14 @@ import {
 } from "@react-email/components";
 import { BigNumberValue, CustomerDTO, OrderDTO } from "@medusajs/types";
 import * as React from "react";
+import { ViewOrderButton, ActivateAccountBlock } from "./_shared"
 
 type OrderPlacedEmailProps = {
   order: OrderDTO & { customer: CustomerDTO };
   email_banner?: { body: string; title: string; url: string };
   paymentProviderID?: string;
+  orderViewToken: string;
+  hasRegisteredAccount?: boolean;
 };
 
 type PaymentInstructionProps = {
@@ -184,6 +187,8 @@ function OrderPlacedEmailComponent({
   order,
   email_banner,
   paymentProviderID = "unknown",
+  orderViewToken,
+  hasRegisteredAccount = false,
 }: OrderPlacedEmailProps) {
   const meta = order.metadata?.payment_method as string | undefined;
 
@@ -214,7 +219,6 @@ function OrderPlacedEmailComponent({
   const customerName =
     order.customer?.first_name || order.shipping_address?.first_name || "there";
 
-  const orderUrl = `${STORE_URL}/us/account/orders/details/${order.id}`;
 
   return (
     <Tailwind config={{ theme: { extend: { colors: { brand: "#111111" } } } }}>
@@ -320,6 +324,21 @@ function OrderPlacedEmailComponent({
                 {[
                   { label: "Subtotal", value: formatPrice(order.item_total) },
                   ...(order.shipping_methods?.map((m) => ({ label: m.name ?? "Shipping", value: formatPrice(m.total) })) ?? []),
+                  ...((() => {
+                    // store credit and gift cards are both credit lines — split by reference
+                    const lines = ((order as any).credit_lines ?? []) as { reference?: string; total?: unknown }[]
+                    const sum = (ref: string) => lines
+                      .filter((l) => l?.reference === ref)
+                      .reduce((s, l) => s + (Number(l?.total) || 0), 0)
+                    const gift = sum("gift-card")
+                    const credit = lines.length
+                      ? lines.reduce((s, l) => s + (Number(l?.total) || 0), 0) - gift
+                      : Number((order as any).credit_line_total) || 0
+                    return [
+                      ...(credit > 0 ? [{ label: "Store credit", value: `−${formatPrice(credit)}` }] : []),
+                      ...(gift > 0 ? [{ label: "Gift card", value: `−${formatPrice(gift)}` }] : []),
+                    ]
+                  })()),
                   { label: "Tax", value: formatPrice(order.tax_total || 0) },
                 ].map(({ label, value }) => (
                   <Row key={label} style={{ marginBottom: 4 }}>
@@ -337,14 +356,8 @@ function OrderPlacedEmailComponent({
 
             {/* CTA */}
             <Section style={{ background: "#111111", padding: "20px 24px", borderLeft: "1px solid #1f1f1f", borderRight: "1px solid #1f1f1f" }}>
-              <Section style={{ textAlign: "center" }}>
-                <Link
-                  href={orderUrl}
-                  style={{ background: "#1f1f1f", color: "#9ca3af", textDecoration: "none", display: "inline-block", padding: "11px 28px", borderRadius: 8, fontSize: 13, border: "1px solid #2a2a2a" }}
-                >
-                  View order details
-                </Link>
-              </Section>
+              <ViewOrderButton token={orderViewToken} />
+              {!hasRegisteredAccount && <ActivateAccountBlock token={orderViewToken} />}
             </Section>
 
             {/* Footer */}

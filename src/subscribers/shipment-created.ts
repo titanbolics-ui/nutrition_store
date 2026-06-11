@@ -1,6 +1,8 @@
 import { SubscriberArgs, type SubscriberConfig } from "@medusajs/medusa";
 import { Modules, ContainerRegistrationKeys } from "@medusajs/utils";
 import { INotificationModuleService } from "@medusajs/types";
+import { MAGIC_TOKEN_MODULE } from "../modules/magic-token";
+import { TRACKING_BASE_URL, buildTrackingUrl } from "../utils/tracking";
 
 type ShipmentCreatedEvent = {
   id: string; // fulfillment id
@@ -147,21 +149,33 @@ export default async function shipmentCreatedHandler({
     return;
   }
 
-  const TRACKING_BASE_URL = "https://dealer-send.com/en-US/track-my-shipment?trackingNumber="
-
   // Build tracking links from labels first, fallback to metadata.tracking_number
   const labels = fulfillment?.labels || [];
   let tracking_links = labels
     .filter((l: any) => l.tracking_number)
     .map((label: any) => ({
       tracking_number: label.tracking_number,
-      url: label.tracking_url || `${TRACKING_BASE_URL}${label.tracking_number}`,
+      url: buildTrackingUrl(label.tracking_number, label.tracking_url),
     }));
 
   if (tracking_links.length === 0 && fulfillment?.metadata?.tracking_number) {
     const tn = String(fulfillment.metadata.tracking_number);
     tracking_links = [{ tracking_number: tn, url: `${TRACKING_BASE_URL}${tn}` }];
   }
+
+  // Token must be generated here — raw value only exists at generateToken return
+  const magicTokenSvc = container.resolve(MAGIC_TOKEN_MODULE) as any;
+  const orderViewToken: string = await magicTokenSvc.generateToken({
+    email: order.email,
+    type: "order_view",
+    orderId: order.id,
+  });
+
+  // registered account → templates hide the "Activate account" block
+  const customerSvc = container.resolve(Modules.CUSTOMER) as any;
+  const hasRegisteredAccount =
+    (await customerSvc.listCustomers({ email: order.email, has_account: true }))
+      .length > 0;
 
   console.log(
     `📧 Sending 'Order Shipped' email to ${order.email} for Order #${order.display_id} with ${tracking_links.length} tracking link(s)`
@@ -174,6 +188,8 @@ export default async function shipmentCreatedHandler({
       template: "order-shipped",
       data: {
         order,
+        orderViewToken,
+        hasRegisteredAccount,
         tracking_links,
         fulfillment_items,
         location_name: locationName,

@@ -25,6 +25,10 @@ import { customerWelcomeEmail } from "./emails/customer-welcome";
 import { orderEditRequestedEmail } from "./emails/order-edit-requested";
 import { orderEditConfirmedEmail } from "./emails/order-edit-confirmed";
 import { paymentNotificationEmail } from "./emails/payment-notification";
+import { orderViewLinkEmail } from "./emails/order-view-link";
+import { activateConfirmEmail } from "./emails/activate-confirm";
+import { magicLinkLoginEmail } from "./emails/magic-link-login";
+import { registerConfirmEmail } from "./emails/register-confirm";
 
 type ResendOptions = {
   api_key?: string;
@@ -64,6 +68,10 @@ enum Templates {
   ORDER_EDIT_REQUESTED = "order-edit-requested",
   ORDER_EDIT_CONFIRMED = "order-edit-confirmed",
   PAYMENT_NOTIFICATION = "payment-notification",
+  ORDER_VIEW_LINK = "order-view-link",
+  ACTIVATE_CONFIRM = "activate-confirm",
+  MAGIC_LINK_LOGIN = "magic-link-login",
+  REGISTER_CONFIRM = "register-confirm",
 }
 
 const templates: { [key in Templates]?: (props: unknown) => React.ReactNode } =
@@ -83,6 +91,10 @@ const templates: { [key in Templates]?: (props: unknown) => React.ReactNode } =
     [Templates.ORDER_EDIT_REQUESTED]: orderEditRequestedEmail,
     [Templates.ORDER_EDIT_CONFIRMED]: orderEditConfirmedEmail,
     [Templates.PAYMENT_NOTIFICATION]: paymentNotificationEmail,
+    [Templates.ORDER_VIEW_LINK]: orderViewLinkEmail,
+    [Templates.ACTIVATE_CONFIRM]: activateConfirmEmail,
+    [Templates.MAGIC_LINK_LOGIN]: magicLinkLoginEmail,
+    [Templates.REGISTER_CONFIRM]: registerConfirmEmail,
   };
 
 class ResendNotificationProviderService extends AbstractNotificationProviderService {
@@ -191,6 +203,14 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
         return "Your order has been updated";
       case Templates.PAYMENT_NOTIFICATION:
         return "Payment required for your updated order";
+      case Templates.ORDER_VIEW_LINK:
+        return "Here's your order link";
+      case Templates.ACTIVATE_CONFIRM:
+        return "Confirm your account activation";
+      case Templates.MAGIC_LINK_LOGIN:
+        return "Your Onyx Genetics login link";
+      case Templates.REGISTER_CONFIRM:
+        return "Confirm your Onyx Genetics registration";
       default:
         return "New Email";
     }

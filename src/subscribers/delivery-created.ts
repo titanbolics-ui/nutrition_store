@@ -1,9 +1,11 @@
 import { SubscriberArgs, type SubscriberConfig } from "@medusajs/medusa";
 import { Modules, ContainerRegistrationKeys } from "@medusajs/utils";
 import { INotificationModuleService } from "@medusajs/types";
+import { MAGIC_TOKEN_MODULE } from "../modules/magic-token";
 
 type DeliveryCreatedEvent = {
   id: string; // fulfillment id
+  no_notification?: boolean;
 };
 
 export default async function deliveryCreatedHandler({
@@ -21,7 +23,14 @@ export default async function deliveryCreatedHandler({
 
   const remoteQuery = container.resolve(ContainerRegistrationKeys.REMOTE_QUERY);
 
-  const { id: fulfillmentId } = event.data;
+  const { id: fulfillmentId, no_notification } = event.data;
+
+  if (no_notification) {
+    console.log(
+      `⚠️ Skipping delivery notification (no_notification=true) for fulfillment_id: ${fulfillmentId}`
+    );
+    return;
+  }
 
   // Load fulfillment with items and full order
   const fulfillmentResult = await remoteQuery({
@@ -110,6 +119,20 @@ export default async function deliveryCreatedHandler({
     };
   });
 
+  // Token must be generated here — raw value only exists at generateToken return
+  const magicTokenSvc = container.resolve(MAGIC_TOKEN_MODULE) as any;
+  const orderViewToken: string = await magicTokenSvc.generateToken({
+    email: order.email,
+    type: "order_view",
+    orderId: order.id,
+  });
+
+  // registered account → templates hide the "Activate account" block
+  const customerSvc = container.resolve(Modules.CUSTOMER) as any;
+  const hasRegisteredAccount =
+    (await customerSvc.listCustomers({ email: order.email, has_account: true }))
+      .length > 0;
+
   console.log(
     `📧 Sending 'Order Delivered' email to ${order.email} for Order #${order.display_id} (is_partial: ${is_partial})`
   );
@@ -121,6 +144,8 @@ export default async function deliveryCreatedHandler({
       template: "order-delivered",
       data: {
         order,
+        orderViewToken,
+        hasRegisteredAccount,
         delivered_items,
         is_partial,
         remaining_items,

@@ -1,6 +1,7 @@
 import { SubscriberArgs, type SubscriberConfig } from "@medusajs/medusa";
 import { Modules, ContainerRegistrationKeys } from "@medusajs/utils";
 import { INotificationModuleService } from "@medusajs/types";
+import { AUTO_TRANSFER_NOTE } from "../utils/claim-guest-orders";
 
 type TransferRequestedEvent = {
   id: string;
@@ -47,6 +48,7 @@ export default async function orderTransferRequestedHandler({
     entryPoint: "order_change",
     fields: [
       "id",
+      "internal_note",
       "actions.id",
       "actions.action",
       "actions.reference_id",
@@ -60,6 +62,15 @@ export default async function orderTransferRequestedHandler({
   const orderChange = Array.isArray(orderChangeResult)
     ? orderChangeResult[0]
     : orderChangeResult;
+
+  // Auto-claim transfers (email already verified) are accepted synchronously in
+  // the same request — a confirmation email would arrive already dead. Skip.
+  if (orderChange?.internal_note === AUTO_TRANSFER_NOTE) {
+    console.log(
+      `ℹ️ Skipping transfer notification for order ${orderId} — auto-claim transfer (${AUTO_TRANSFER_NOTE})`
+    );
+    return;
+  }
 
   const transferCustomerAction = orderChange?.actions?.find(
     (action: { action?: string }) => action.action === "TRANSFER_CUSTOMER"

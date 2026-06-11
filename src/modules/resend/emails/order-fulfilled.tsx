@@ -4,6 +4,7 @@ import {
 } from "@react-email/components";
 import { BigNumberValue, OrderDTO } from "@medusajs/types";
 import * as React from "react";
+import { ViewOrderButton, ActivateAccountBlock } from "./_shared";
 
 type FulfillmentItem = {
   line_item_id?: string;
@@ -29,6 +30,8 @@ type OrderFulfilledEmailProps = {
   };
   is_partial?: boolean;
   remaining_items?: OrderItem[];
+  orderViewToken: string;
+  hasRegisteredAccount?: boolean;
 };
 
 const STORE_URL = process.env.STORE_URL || "https://onyxgenetics.com";
@@ -38,6 +41,8 @@ function OrderFulfilledEmailComponent({
   fulfillment,
   is_partial = false,
   remaining_items = [],
+  orderViewToken,
+  hasRegisteredAccount = false,
 }: OrderFulfilledEmailProps) {
   const formatter = new Intl.NumberFormat([], {
     style: "currency",
@@ -57,7 +62,6 @@ function OrderFulfilledEmailComponent({
   };
 
   const customerName = order.shipping_address?.first_name || "there";
-  const orderUrl = `${STORE_URL}/us/account/orders/details/${order.id}`;
   const locationName = fulfillment?.location_name || "Warehouse";
 
   // Map fulfillment items to order items for product titles
@@ -203,13 +207,9 @@ function OrderFulfilledEmailComponent({
             </Section>
 
             {/* CTA */}
-            <Section style={{ background: "#111111", padding: "20px 24px", textAlign: "center", borderLeft: "1px solid #1f1f1f", borderRight: "1px solid #1f1f1f" }}>
-              <Link
-                href={orderUrl}
-                style={{ background: "#1f1f1f", color: "#9ca3af", textDecoration: "none", display: "inline-block", padding: "11px 28px", borderRadius: 8, fontSize: 13, border: "1px solid #2a2a2a" }}
-              >
-                View order details
-              </Link>
+            <Section style={{ background: "#111111", padding: "20px 24px", borderLeft: "1px solid #1f1f1f", borderRight: "1px solid #1f1f1f" }}>
+              <ViewOrderButton token={orderViewToken} />
+              {!hasRegisteredAccount && <ActivateAccountBlock token={orderViewToken} />}
             </Section>
 
             {/* Footer */}

@@ -1,5 +1,6 @@
 import { SubscriberArgs, type SubscriberConfig } from "@medusajs/framework"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { MAGIC_TOKEN_MODULE } from "../modules/magic-token"
 
 function parseNum(v: unknown): number {
   if (typeof v === "number") return v
@@ -248,6 +249,25 @@ export default async function orderEditNotificationHandler({
       ""
     const paymentMethod = formatPaymentMethod(providerId)
 
+    // Generate order_view token in the same flow so the email always has a working link
+    const magicTokenSvc = container.resolve(MAGIC_TOKEN_MODULE) as any
+    let orderViewToken: string | undefined
+    try {
+      orderViewToken = await magicTokenSvc.generateToken({
+        email: order.email,
+        type: "order_view",
+        orderId: data.order_id,
+      })
+    } catch (e: any) {
+      logger.warn(`[order-edit-notification] Could not generate view token for ${data.order_id}: ${e.message}`)
+    }
+
+    // registered account → templates hide the "Activate account" block
+    const customerSvc = container.resolve(Modules.CUSTOMER) as any
+    const hasRegisteredAccount =
+      (await customerSvc.listCustomers({ email: order.email, has_account: true }))
+        .length > 0
+
     const payload = {
       order,
       changes,
@@ -255,6 +275,8 @@ export default async function orderEditNotificationHandler({
       paidTotal,
       paymentMethod,
       providerId,
+      orderViewToken,
+      hasRegisteredAccount,
     }
 
     if (eventName === "order-edit.requested") {

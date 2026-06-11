@@ -1,4 +1,5 @@
 import { loadEnv, defineConfig, Modules } from "@medusajs/framework/utils";
+import MagicTokenModule, { MAGIC_TOKEN_MODULE } from "./src/modules/magic-token";
 
 loadEnv(process.env.NODE_ENV || "development", process.cwd());
 
@@ -26,6 +27,10 @@ module.exports = defineConfig({
     }),
   },
   modules: [
+    {
+      resolve: "./src/modules/magic-token",
+      key: MAGIC_TOKEN_MODULE,
+    },
     {
       resolve: "@medusajs/medusa/payment",
       options: {
