@@ -1,4 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { Modules } from "@medusajs/framework/utils"
 import { MAGIC_TOKEN_MODULE } from "../../../../../modules/magic-token"
 
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
@@ -30,6 +31,12 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     orderId: id,
   })
 
+  // registered account → template hides the "Activate account" block
+  const customerSvc = req.scope.resolve(Modules.CUSTOMER) as any
+  const hasRegisteredAccount =
+    (await customerSvc.listCustomers({ email: order.email, has_account: true }))
+      .length > 0
+
   await notificationService.createNotifications({
     to: order.email,
     channel: "email",
@@ -44,6 +51,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       amountDue: amount_due,
       providerId: provider_id || "",
       orderViewToken,
+      hasRegisteredAccount,
     },
   })
 

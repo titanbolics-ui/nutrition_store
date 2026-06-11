@@ -15,6 +15,7 @@ import {
   Hr,
 } from "@react-email/components"
 import * as React from "react"
+import { ViewOrderButton, ActivateAccountBlock } from "./_shared"
 
 type ResolvedChange = {
   product_title: string
@@ -39,6 +40,8 @@ type OrderEditRequestedEmailProps = {
   amountDue?: number
   paidTotal?: number
   paymentMethod?: string
+  orderViewToken: string
+  hasRegisteredAccount?: boolean
 }
 
 const STORE_URL = process.env.STORE_URL || "https://onyxgenetics.com"
@@ -96,9 +99,9 @@ function OrderEditRequestedEmailComponent({
   amountDue = 0,
   paidTotal = 0,
   paymentMethod = "",
+  orderViewToken,
+  hasRegisteredAccount = false,
 }: OrderEditRequestedEmailProps) {
-  const orderUrl = `${STORE_URL}/us/account/orders/details/${order.id}`
-
   const formatter = new Intl.NumberFormat([], {
     style: "currency",
     currencyDisplay: "narrowSymbol",
@@ -207,17 +210,8 @@ function OrderEditRequestedEmailComponent({
 
             {/* CTA */}
             <Section style={{ background: "#111111", padding: "0 24px 28px", borderLeft: "1px solid #1f1f1f", borderRight: "1px solid #1f1f1f" }}>
-              <Text style={{ color: "#9ca3af", fontSize: 13, margin: "0 0 14px", lineHeight: 1.5 }}>
-                Log in to your account to confirm or decline these changes.
-              </Text>
-              <Section style={{ textAlign: "center" }}>
-                <Link
-                  href={orderUrl}
-                  style={{ background: "#b8ff2b", color: "#000000", textDecoration: "none", display: "inline-block", padding: "12px 28px", borderRadius: 8, fontWeight: 700, fontSize: 14 }}
-                >
-                  Review & confirm changes →
-                </Link>
-              </Section>
+              <ViewOrderButton token={orderViewToken} />
+              {!hasRegisteredAccount && <ActivateAccountBlock token={orderViewToken} />}
             </Section>
 
             {/* Footer */}

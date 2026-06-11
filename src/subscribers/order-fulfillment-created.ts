@@ -1,6 +1,7 @@
 import { SubscriberArgs, type SubscriberConfig } from "@medusajs/medusa";
 import { Modules, ContainerRegistrationKeys } from "@medusajs/utils";
 import { INotificationModuleService } from "@medusajs/types";
+import { MAGIC_TOKEN_MODULE } from "../modules/magic-token";
 
 type FulfillmentCreatedEvent = {
   order_id: string;
@@ -81,6 +82,25 @@ export default async function orderFulfillmentCreatedHandler({
   );
   const isPartial = remainingItems.length > 0;
 
+  // Generate order_view token in the same flow so the email has a working link
+  const magicTokenSvc = container.resolve(MAGIC_TOKEN_MODULE) as any;
+  let orderViewToken: string | undefined;
+  try {
+    orderViewToken = await magicTokenSvc.generateToken({
+      email: order.email,
+      type: "order_view",
+      orderId: order_id,
+    });
+  } catch {
+    // Missing token degrades gracefully — template will throw (by design, not silently)
+  }
+
+  // registered account → templates hide the "Activate account" block
+  const customerSvc = container.resolve(Modules.CUSTOMER) as any;
+  const hasRegisteredAccount =
+    (await customerSvc.listCustomers({ email: order.email, has_account: true }))
+      .length > 0;
+
   console.log(
     `📧 Sending 'Order Fulfilled' email to ${order.email} for Order #${order.display_id} (partial: ${isPartial})`
   );
@@ -97,6 +117,8 @@ export default async function orderFulfillmentCreatedHandler({
       },
       is_partial: isPartial,
       remaining_items: remainingItems,
+      orderViewToken,
+      hasRegisteredAccount,
     },
   });
 }

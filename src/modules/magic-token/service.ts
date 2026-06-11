@@ -26,8 +26,9 @@ class MagicTokenModuleService extends MedusaService({ MagicToken }) {
     email: string
     type: TokenType
     orderId?: string
+    payload?: Record<string, unknown>
   }): Promise<string> {
-    const { email, type, orderId } = opts
+    const { email, type, orderId, payload } = opts
 
     if (type === "login" || type === "activate") {
       const since = new Date(Date.now() - 60 * 60 * 1000)
@@ -49,12 +50,13 @@ class MagicTokenModuleService extends MedusaService({ MagicToken }) {
       order_id: orderId ?? null,
       expires_at: new Date(Date.now() + TTL_MS[type]),
       used_at: null,
+      payload: payload ?? null,
     }])
 
     return raw
   }
 
-  async verifyToken(raw: string, type: TokenType): Promise<{ email: string; orderId: string | null }> {
+  async verifyToken(raw: string, type: TokenType): Promise<{ email: string; orderId: string | null; payload: Record<string, unknown> | null }> {
     const tokenHash = this.hash(raw)
 
     const [token] = await this.listMagicTokens({ token_hash: tokenHash, type } as any)
@@ -75,7 +77,7 @@ class MagicTokenModuleService extends MedusaService({ MagicToken }) {
       if (result === 0) throw new Error("Link has already been used.")
     }
 
-    return { email: token.email, orderId: token.order_id ?? null }
+    return { email: token.email, orderId: token.order_id ?? null, payload: token.payload ?? null }
   }
 
   async hardDeleteExpired(): Promise<number> {

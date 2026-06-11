@@ -1,6 +1,7 @@
 import { SubscriberArgs, type SubscriberConfig } from "@medusajs/medusa";
 import { Modules, ContainerRegistrationKeys } from "@medusajs/utils";
 import { INotificationModuleService } from "@medusajs/types";
+import { MAGIC_TOKEN_MODULE } from "../modules/magic-token";
 
 export default async function paymentCapturedHandler({
   event,
@@ -98,6 +99,20 @@ export default async function paymentCapturedHandler({
     return;
   }
 
+  // Token must be generated here — raw value only exists at generateToken return
+  const magicTokenSvc = container.resolve(MAGIC_TOKEN_MODULE) as any;
+  const orderViewToken: string = await magicTokenSvc.generateToken({
+    email: order.email,
+    type: "order_view",
+    orderId: order.id,
+  });
+
+  // registered account → templates hide the "Activate account" block
+  const customerSvc = container.resolve(Modules.CUSTOMER) as any;
+  const hasRegisteredAccount =
+    (await customerSvc.listCustomers({ email: order.email, has_account: true }))
+      .length > 0;
+
   console.log(
     `📧 Sending 'Payment Received' email to ${order.email} for Order #${order.display_id}`
   );
@@ -108,6 +123,8 @@ export default async function paymentCapturedHandler({
     template: "order-paid",
     data: {
       order: order,
+      orderViewToken,
+      hasRegisteredAccount,
     },
   });
 }

@@ -8,4 +8,5 @@ export const MagicToken = model.define("magic_token", {
   type: model.enum(["order_view", "login", "activate"]),
   expires_at: model.dateTime(),
   used_at: model.dateTime().nullable(),
+  payload: model.json().nullable(),
 })
