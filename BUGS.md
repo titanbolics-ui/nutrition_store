@@ -193,3 +193,15 @@
 - **Symptom:** logged-in customers placing orders still got "Activate account" in every order email.
 - **Fix:** every email sender now checks `listCustomers({ email, has_account: true })` and passes `hasRegisteredAccount` to the template; all 9 templates render `ActivateAccountBlock` only when `!hasRegisteredAccount`. Senders covered: order-placed workflow (token step now returns `{ token, hasRegisteredAccount }`), payment-captured, shipment-created, delivery-created, order-fulfillment-created, order-edit-notification, lookup/send-link, admin send-payment-notification.
 - **Bonus:** `payment-notification.tsx` still had the old `/us/account/orders/details/` silent fallback (A1 class) — token made required, fallback removed.
+
+## G3 — Sheets sync: edit-added items routed to wrong warehouse (order #1462 / TESTOPLEX E300)
+
+- **ID:** G3
+- **Status:** fixed (2026-06-11)
+- **Symptom:** order #1462 edited after checkout (Testosterone Enanthate → TESTOPLEX E300 ×3, stocked only at "US Domestic [XT-Labs]"); the sheet kept everything under Main Warehouse.
+- **Root cause:** warehouse attribution comes from `order.metadata.warehouse_items` — a snapshot written by the checkout shipping-options hook at CART time. Order edits change items but never the snapshot: removed items linger as ghosts, added items are invisible to the sync job.
+- **Fixes:**
+  1. `src/utils/order-warehouse-items.ts` — `rebuildOrderWarehouseItems()` recomputes the snapshot from current order items via live inventory levels (same rule as the checkout hook; non-inventory items keep their old assignment).
+  2. `src/subscribers/order-edit-warehouse-meta.ts` — rebuilds metadata on every `order-edit.confirmed`.
+  3. Sheets job: `items.*` + variant inventory fields; ghost meta items (removed via edit) skipped with a warning; items missing from the snapshot resolved from live inventory (legacy orders); rows already synced get their Amount/Items/Notes updated when an edit changed them (status/tracking columns untouched; updates applied before inserts so row numbers stay valid).
+  4. `src/scripts/rebuild-warehouse-items.ts` — backfill for already-edited orders (`npx medusa exec ./src/scripts/rebuild-warehouse-items.ts 1462` or no args = all edited orders in 60 days). Must run on the PROD environment to fix prod metadata.
