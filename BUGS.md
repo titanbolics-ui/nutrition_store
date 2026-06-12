@@ -220,3 +220,14 @@
   2. 17track dashboard → Webhook URL: `https://<backend>/hooks/seventeen-track` (signature `sign` = sha256(rawBody + "/" + key); raw body preserved via `src/api/middlewares.ts`).
   3. Migration: `npx medusa db:migrate` (table `seventeen_track_number`).
 - **Notes:** duplicate tracking numbers across orders are registered once (first/newest fulfillment wins); admin manual "Mark as delivered" still works — webhook/job detect `delivered_at` already set and only clean up the slot.
+
+---
+
+## G4 — Sheets sync: Amount ignores manual discounts (2026-06-12)
+
+- **Symptom:** order #1468 row updated to the right item (3x RETATRUTIDE 40 ZPHC) after the G3 fix, but Amount = 748 while the real order total is 688 — the $60 "Manual discount" (order_line_item_adjustment) was lost.
+- **Root cause:** `calcSubtotal()` recomputed the amount manually as `unit_price × quantity`, ignoring backend-computed adjustments. Same class of mistake as the checkout-summary manual math — always take totals from the backend (`item.total` already includes discount_total).
+- **Fixes:**
+  1. `effectiveUnitPrice(item)` = `item.total / item.quantity` (falls back to unit_price if total missing); captured from the full line *before* the per-warehouse quantity override, so split lines stay proportional.
+  2. Existing-row update now also triggers when only the Amount changed (was: items text only), with currency-formatting-tolerant comparison — so already-synced wrong amounts self-heal on the next run.
+- **Verified:** local order #1489 — query.graph `items.*` returns `total` net of Manual discount (299 → 286.51). For #1468: 657 + 31 shipping = 688 ✓.
