@@ -1,4 +1,5 @@
 import { MedusaContainer } from "@medusajs/types"
+import { Modules } from "@medusajs/framework/utils"
 import { auth as googleAuth, sheets as sheetsClient, sheets_v4 } from "@googleapis/sheets"
 import {
   ORDER_ITEM_LOCATION_FIELDS,
@@ -216,6 +217,7 @@ async function insertRowsAtTop(
 export default async function syncOrdersToSheets(container: MedusaContainer) {
   const logger = container.resolve("logger")
   const query  = container.resolve("query")
+  const orderModule = container.resolve(Modules.ORDER) as any
 
   if (!WAREHOUSE_SHEETS.length) {
     logger.info("sync-orders-to-sheets: no sheets configured — skipping")
@@ -244,6 +246,9 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
       "created_at",
       "currency_code",
       "metadata",
+      // order-level total triggers the totals decorator — without it
+      // items.* comes back WITHOUT computed item.total (G4/G5)
+      "total",
       "+payment_status",
       "payment_collections.payments.provider_id",
       "payment_collections.payments.captured_at",
@@ -293,8 +298,29 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
   let added = 0
   let updated = 0
 
+  // numeric compare tolerant to currency formatting in sheet cells
+  const num = (v: any) => Number(String(v ?? "").replace(/[^0-9.-]/g, ""))
+  const sameAmount = (a: any, b: any) =>
+    !isNaN(num(a)) && !isNaN(num(b)) && Math.abs(num(a) - num(b)) < 0.01
+
   for (const order of orders) {
     const displayId = String(order.display_id)
+
+    // What this job last wrote per warehouse ({amount, items, notes}) — used to
+    // tell our own writes apart from manual sheet edits, which we never touch.
+    const syncMeta = {
+      ...(((order.metadata as any)?.sheets_sync ?? {}) as Record<
+        string,
+        {
+          amount: string
+          items: string
+          notes: string
+          // cells the admin edited by hand — the job never writes these again
+          manual?: { amount?: boolean; items?: boolean; notes?: boolean }
+        }
+      >),
+    }
+    let syncMetaDirty = false
 
     // Payment provider
     const providerId =
@@ -382,18 +408,78 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
 
       const existingRow = existing.get(displayId)
       if (existingRow) {
-        // Row already synced — refresh items/amount if an order edit changed them.
-        // Tracking/status columns (H–K) are admin-owned and never touched.
-        // Sheet cell may carry currency formatting — strip it before comparing.
-        const sheetAmount = Number(String(existingRow.amount).replace(/[^0-9.-]/g, ""))
-        const amountChanged = !isNaN(sheetAmount) && Math.abs(sheetAmount - amount) > 0.009
-        if (existingRow.items !== itemsText || amountChanged) {
-          updatesBySheet.get(sheetKey)!.push(
-            { range: `${warehouse.tabName}!B${existingRow.rowNumber}`, values: [[amount]] },
-            { range: `${warehouse.tabName}!F${existingRow.rowNumber}:G${existingRow.rowNumber}`, values: [[itemsText, notes]] },
-          )
+        // Row already synced. We only ever rewrite cells that still hold what
+        // WE last wrote (snapshot in order.metadata.sheets_sync) — a cell the
+        // admin edited by hand is theirs from then on. H–K never touched.
+        const managed = syncMeta[warehouse.locationId]
+
+        if (!managed) {
+          // legacy row from before snapshots existed — adopt current sheet
+          // values as the baseline; computed corrections apply from next run
+          syncMeta[warehouse.locationId] = {
+            amount: existingRow.amount,
+            items: existingRow.items,
+            notes: existingRow.notes,
+            manual: {},
+          }
+          syncMetaDirty = true
+          logger.info(`  📌 Order #${displayId}: baseline recorded for ${warehouse.name}`)
+          continue
+        }
+
+        const upd: { range: string; values: any[][] }[] = []
+        const r = existingRow.rowNumber
+
+        const cur: any = { manual: {}, ...managed }
+        cur.manual = { ...(cur.manual ?? {}) }
+        const textEq = (a: any, b: any) => String(a ?? "").trim() === String(b ?? "").trim()
+        const cells: {
+          key: "amount" | "items" | "notes"
+          col: string
+          sheetVal: string
+          computed: any
+          eq: (a: any, b: any) => boolean
+        }[] = [
+          { key: "amount", col: "B", sheetVal: existingRow.amount, computed: amount, eq: sameAmount },
+          { key: "items",  col: "F", sheetVal: existingRow.items,  computed: itemsText, eq: textEq },
+          { key: "notes",  col: "G", sheetVal: existingRow.notes,  computed: notes, eq: textEq },
+        ]
+
+        for (const c of cells) {
+          if (cur.manual[c.key]) {
+            // human-owned cell — never write; release the flag only if the
+            // human re-aligned it with the computed value
+            if (c.eq(c.sheetVal, c.computed)) {
+              cur.manual[c.key] = false
+              cur[c.key] = c.sheetVal
+              syncMetaDirty = true
+            }
+            continue
+          }
+          if (!c.eq(c.sheetVal, cur[c.key])) {
+            // sheet differs from what we last wrote → manually edited
+            cur[c.key] = c.sheetVal
+            syncMetaDirty = true
+            if (!c.eq(c.sheetVal, c.computed)) {
+              cur.manual[c.key] = true
+              logger.warn(
+                `  ✋ Order #${displayId} ${warehouse.name}: ${c.key} manually edited — job will not touch it ` +
+                `(sheet "${String(c.sheetVal).slice(0, 40)}", computed "${String(c.computed).slice(0, 40)}")`
+              )
+            }
+          } else if (!c.eq(cur[c.key], c.computed)) {
+            upd.push({ range: `${warehouse.tabName}!${c.col}${r}`, values: [[c.computed]] })
+            cur[c.key] = String(c.computed)
+            syncMetaDirty = true
+          }
+        }
+
+        syncMeta[warehouse.locationId] = cur
+
+        if (upd.length) {
+          updatesBySheet.get(sheetKey)!.push(...upd)
           updated++
-          logger.info(`  🔄 Order #${displayId} changed — updating row ${existingRow.rowNumber} in ${warehouse.name}`)
+          logger.info(`  🔄 Order #${displayId} changed — updating ${upd.length} cell(s) in row ${r} of ${warehouse.name}`)
         } else {
           logger.info(`  ⏭️  Order #${displayId} already in ${warehouse.name}`)
         }
@@ -416,11 +502,24 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
 
       rowsBySheet.get(sheetKey)!.push(row)
       existing.set(displayId, { rowNumber: -1, amount: String(amount), items: itemsText, notes })
+      syncMeta[warehouse.locationId] = { amount: String(amount), items: itemsText, notes, manual: {} }
+      syncMetaDirty = true
       added++
       logger.info(
         `  ✅ Order #${displayId} → ${warehouse.name}: ` +
         `${warehouseItems.length} item(s), subtotal=${itemSubtotal}, shipping=${warehouse.shipping}, total=${amount}`
       )
+    }
+
+    if (syncMetaDirty) {
+      try {
+        await orderModule.updateOrders([{
+          id: order.id,
+          metadata: { ...((order.metadata as any) ?? {}), sheets_sync: syncMeta },
+        }])
+      } catch (err: any) {
+        logger.warn(`  ⚠️ Order #${displayId}: failed to persist sheets_sync snapshot — ${err?.message}`)
+      }
     }
   }
 
