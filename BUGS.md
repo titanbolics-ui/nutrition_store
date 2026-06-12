@@ -231,3 +231,17 @@
   1. `effectiveUnitPrice(item)` = `item.total / item.quantity` (falls back to unit_price if total missing); captured from the full line *before* the per-warehouse quantity override, so split lines stay proportional.
   2. Existing-row update now also triggers when only the Amount changed (was: items text only), with currency-formatting-tolerant comparison — so already-synced wrong amounts self-heal on the next run.
 - **Verified:** local order #1489 — query.graph `items.*` returns `total` net of Manual discount (299 → 286.51). For #1468: 657 + 31 shipping = 688 ✓.
+
+---
+
+## G5 — Sheets sync: G4 made it worse on prod + job fought manual edits (2026-06-12)
+
+- **Symptom:** after G4 deployed, #1468 still showed 748 AND the job started overwriting the manually corrected Amount on every run.
+- **Root causes:**
+  1. `item.total` is only populated by query.graph when an **order-level total field** is requested — the job's query didn't request one, so in the real job context `items.*` came back without computed totals and `effectiveUnitPrice()` silently fell back to `unit_price` (the isolated G4 test passed because it requested `"total"`). → 748 stayed.
+  2. The G4 `amountChanged` condition then saw sheet(688 manual) ≠ computed(748) and "self-healed" the admin's correct value back to the wrong one — every 15 minutes.
+- **Fixes:**
+  1. Job query now requests `"total"` at order level → `item.total` populated → Amount = 657 + 31 = 688 ✓.
+  2. Ownership snapshot in `order.metadata.sheets_sync[locationId]` = `{amount, items, notes, manual}` — what the job last wrote per cell. The job only rewrites a cell that still holds its own last-written value; a cell that differs was edited by hand → `manual.<cell> = true`, warn once, **never touch it again** (flag released only if the human re-aligns the cell with the computed value). Legacy rows get a baseline on first sight, corrections from the next run.
+- **Verified locally (Dev-Test-Sheet, #1490):** manual 999 kept across runs with one ✋ warning; flag released after restoring 48; job-owned amount corrections still apply.
+- **Lesson (extends A3/F5/F7):** computed `item.total` exists only when an order-level total is also in the fields list. And a sync job must track ownership of the cells it writes — "update if different" inevitably wars with humans.
