@@ -76,9 +76,23 @@ function formatItems(items: any[]): string {
     .join("\n")
 }
 
-// item subtotal for a list of items
+// Effective per-unit price from the backend-computed line total — includes
+// manual discounts / promotion adjustments that unit_price doesn't (G4).
+function effectiveUnitPrice(item: any): number {
+  const qty = Number(item.quantity) || 1
+  const total = Number(item.total)
+  if (!isNaN(total)) return total / qty
+  return Number(item.unit_price ?? 0)
+}
+
+// item subtotal for a list of items (quantity may be the per-warehouse share,
+// so effective_unit_price is captured from the full line before any override)
 function calcSubtotal(items: any[]): number {
-  return items.reduce((sum, i) => sum + Number(i.unit_price ?? 0) * Number(i.quantity ?? 1), 0)
+  return items.reduce(
+    (sum, i) =>
+      sum + Number(i.effective_unit_price ?? effectiveUnitPrice(i)) * (Number(i.quantity) || 1),
+    0
+  )
 }
 
 // Build notes string from applied discounts / credits / gift cards
@@ -320,7 +334,11 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
             )
             continue
           }
-          matched.push({ ...full, quantity: mi.quantity })
+          matched.push({
+            ...full,
+            quantity: mi.quantity,
+            effective_unit_price: effectiveUnitPrice(full),
+          })
           coveredItemIds.add(full.id)
         }
         if (matched.length) warehouseItemsMap.set(locId, matched)
@@ -366,7 +384,10 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
       if (existingRow) {
         // Row already synced — refresh items/amount if an order edit changed them.
         // Tracking/status columns (H–K) are admin-owned and never touched.
-        if (existingRow.items !== itemsText) {
+        // Sheet cell may carry currency formatting — strip it before comparing.
+        const sheetAmount = Number(String(existingRow.amount).replace(/[^0-9.-]/g, ""))
+        const amountChanged = !isNaN(sheetAmount) && Math.abs(sheetAmount - amount) > 0.009
+        if (existingRow.items !== itemsText || amountChanged) {
           updatesBySheet.get(sheetKey)!.push(
             { range: `${warehouse.tabName}!B${existingRow.rowNumber}`, values: [[amount]] },
             { range: `${warehouse.tabName}!F${existingRow.rowNumber}:G${existingRow.rowNumber}`, values: [[itemsText, notes]] },
