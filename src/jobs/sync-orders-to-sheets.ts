@@ -1,5 +1,9 @@
 import { MedusaContainer } from "@medusajs/types"
 import { auth as googleAuth, sheets as sheetsClient, sheets_v4 } from "@googleapis/sheets"
+import {
+  ORDER_ITEM_LOCATION_FIELDS,
+  resolveItemLocation,
+} from "../utils/order-warehouse-items"
 
 // ─── Warehouse config ─────────────────────────────────────────────────────────
 // Columns:
@@ -112,21 +116,35 @@ function totalStoreCredit(order: any): number {
 
 // ─── Sheet helpers ────────────────────────────────────────────────────────────
 
-async function getExistingOrderNumbers(
+type ExistingRow = { rowNumber: number; amount: string; items: string; notes: string }
+
+// displayId → existing row (1-based row number + current B/F/G values)
+async function getExistingRows(
   sheets: sheets_v4.Sheets,
   spreadsheetId: string,
   tabName: string
-): Promise<Set<string>> {
+): Promise<Map<string, ExistingRow>> {
+  const map = new Map<string, ExistingRow>()
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `${tabName}!A2:A`,
+      range: `${tabName}!A2:G`,
     })
     const values = (res.data.values ?? []) as string[][]
-    return new Set(values.map((r) => String(r[0] ?? "").trim()).filter(Boolean))
+    values.forEach((r, i) => {
+      const id = String(r[0] ?? "").trim()
+      if (!id) return
+      map.set(id, {
+        rowNumber: i + 2, // A2 = row 2
+        amount: String(r[1] ?? "").trim(),
+        items: String(r[5] ?? "").trim(),
+        notes: String(r[6] ?? "").trim(),
+      })
+    })
   } catch {
-    return new Set()
+    // sheet unreadable — treat as empty, inserts will still dedupe next run
   }
+  return map
 }
 
 async function insertRowsAtTop(
@@ -217,11 +235,10 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
       "payment_collections.payments.captured_at",
       "payment_collections.payment_sessions.provider_id",
       "shipping_address.*",
-      "items.id",
-      "items.title",
-      "items.product_title",
-      "items.quantity",
-      "items.unit_price",
+      // items.* — explicit subfield lists drop computed fields (quantity);
+      // location fields enable live warehouse resolution for items missing
+      // from the metadata snapshot (e.g. items added via order edit)
+      ...ORDER_ITEM_LOCATION_FIELDS,
       "credit_lines.reference",
       "credit_lines.amount",
       "promotions.code",
@@ -244,19 +261,23 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
   logger.info(`  Configured warehouses: ${WAREHOUSE_SHEETS.map((w) => `${w.name}=${w.locationId}`).join(", ")}`)
   if (!orders.length) return
 
-  // 2. Pre-load existing order numbers from each sheet tab
-  const existingBySheet = new Map<string, Set<string>>()
+  // 2. Pre-load existing rows (order # + current values) from each sheet tab
+  const existingBySheet = new Map<string, Map<string, ExistingRow>>()
   for (const w of WAREHOUSE_SHEETS) {
     const key = `${w.spreadsheetId}::${w.tabName}`
-    existingBySheet.set(key, await getExistingOrderNumbers(sheets, w.spreadsheetId, w.tabName))
+    existingBySheet.set(key, await getExistingRows(sheets, w.spreadsheetId, w.tabName))
   }
 
   const rowsBySheet = new Map<string, any[][]>()
+  // value-range updates for rows whose items changed after sync (order edits)
+  const updatesBySheet = new Map<string, { range: string; values: any[][] }[]>()
   for (const w of WAREHOUSE_SHEETS) {
     rowsBySheet.set(`${w.spreadsheetId}::${w.tabName}`, [])
+    updatesBySheet.set(`${w.spreadsheetId}::${w.tabName}`, [])
   }
 
   let added = 0
+  let updated = 0
 
   for (const order of orders) {
     const displayId = String(order.display_id)
@@ -285,21 +306,42 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
 
     // Build warehouseItemsMap: locationId → full order items for that warehouse
     const warehouseItemsMap = new Map<string, any[]>()
+    const coveredItemIds = new Set<string>()
 
     if (Object.keys(warehouseMeta).length > 0) {
       for (const [locId, meta] of Object.entries(warehouseMeta)) {
-        const matched = meta.items.map((mi) => {
+        const matched: any[] = []
+        for (const mi of meta.items) {
           const full = itemByTitle.get(mi.title)
-          if (full) return { ...full, quantity: mi.quantity }
-          return { product_title: mi.title, title: mi.title, quantity: mi.quantity, unit_price: 0 }
-        })
-        warehouseItemsMap.set(locId, matched)
+          if (!full) {
+            // item was removed by an order edit — the snapshot is stale, skip it
+            logger.warn(
+              `  ⚠️ Order #${displayId}: "${mi.title}" in warehouse_items metadata but not in order — skipping (removed via edit?)`
+            )
+            continue
+          }
+          matched.push({ ...full, quantity: mi.quantity })
+          coveredItemIds.add(full.id)
+        }
+        if (matched.length) warehouseItemsMap.set(locId, matched)
       }
-    } else {
-      // No warehouse metadata — assign all items to the first configured warehouse
-      if (WAREHOUSE_SHEETS[0]) {
-        warehouseItemsMap.set(WAREHOUSE_SHEETS[0].locationId, orderItems)
+    }
+
+    // Items not covered by the metadata snapshot (added via order edit, or no
+    // snapshot at all) — resolve warehouse from live inventory levels
+    for (const item of orderItems) {
+      if (coveredItemIds.has(item.id)) continue
+      const loc = resolveItemLocation(item)
+      const locationId = loc?.locationId ?? WAREHOUSE_SHEETS[0]?.locationId
+      if (!locationId) continue
+      if (!loc) {
+        logger.warn(
+          `  ⚠️ Order #${displayId}: no inventory location for "${item.product_title ?? item.title}" — defaulting to ${WAREHOUSE_SHEETS[0]?.name}`
+        )
       }
+      const list = warehouseItemsMap.get(locationId) ?? []
+      list.push(item)
+      warehouseItemsMap.set(locationId, list)
     }
 
     // Create a row for each warehouse that has items in this order
@@ -310,11 +352,6 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
       const sheetKey = `${warehouse.spreadsheetId}::${warehouse.tabName}`
       const existing = existingBySheet.get(sheetKey)!
 
-      if (existing.has(displayId)) {
-        logger.info(`  ⏭️  Order #${displayId} already in ${warehouse.name}`)
-        continue
-      }
-
       // Amount = item subtotal for this warehouse + fixed shipping cost
       // Store credit is deducted only from Main Warehouse (first in config)
       const itemSubtotal = calcSubtotal(warehouseItems)
@@ -323,6 +360,24 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
       const amount = Math.max(0, itemSubtotal + warehouse.shipping - creditDeduction)
 
       const notes = buildNotes(order)
+      const itemsText = formatItems(warehouseItems)
+
+      const existingRow = existing.get(displayId)
+      if (existingRow) {
+        // Row already synced — refresh items/amount if an order edit changed them.
+        // Tracking/status columns (H–K) are admin-owned and never touched.
+        if (existingRow.items !== itemsText) {
+          updatesBySheet.get(sheetKey)!.push(
+            { range: `${warehouse.tabName}!B${existingRow.rowNumber}`, values: [[amount]] },
+            { range: `${warehouse.tabName}!F${existingRow.rowNumber}:G${existingRow.rowNumber}`, values: [[itemsText, notes]] },
+          )
+          updated++
+          logger.info(`  🔄 Order #${displayId} changed — updating row ${existingRow.rowNumber} in ${warehouse.name}`)
+        } else {
+          logger.info(`  ⏭️  Order #${displayId} already in ${warehouse.name}`)
+        }
+        continue
+      }
 
       const row = [
         displayId,                              // A: Order #
@@ -330,7 +385,7 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
         formatDate(order.created_at as string), // C: Date
         paymentMethod,                          // D: Payment method
         formatCustomer(order),                  // E: Customer (multiline)
-        formatItems(warehouseItems),            // F: Items (multiline)
+        itemsText,                              // F: Items (multiline)
         notes,                                  // G: Notes (credit / promo / gift card)
         "Human Review",                         // H: Order Status
         "",                                     // I: Tracking (empty)
@@ -339,7 +394,7 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
       ]
 
       rowsBySheet.get(sheetKey)!.push(row)
-      existing.add(displayId)
+      existing.set(displayId, { rowNumber: -1, amount: String(amount), items: itemsText, notes })
       added++
       logger.info(
         `  ✅ Order #${displayId} → ${warehouse.name}: ` +
@@ -348,7 +403,24 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
     }
   }
 
-  // 3. Append in batch per sheet
+  // 3. Apply row updates first — inserting rows at the top shifts row numbers
+  for (const warehouse of WAREHOUSE_SHEETS) {
+    const sheetKey = `${warehouse.spreadsheetId}::${warehouse.tabName}`
+    const updates = updatesBySheet.get(sheetKey)!
+    if (updates.length) {
+      try {
+        await sheets.spreadsheets.values.batchUpdate({
+          spreadsheetId: warehouse.spreadsheetId,
+          requestBody: { valueInputOption: "USER_ENTERED", data: updates },
+        })
+        logger.info(`  🔄 Updated ${updates.length / 2} changed row(s) in ${warehouse.name}`)
+      } catch (err: any) {
+        logger.error(`  ❌ Failed to update rows in ${warehouse.name}: ${err.message}`)
+      }
+    }
+  }
+
+  // 4. Append new rows in batch per sheet
   for (const warehouse of WAREHOUSE_SHEETS) {
     const sheetKey = `${warehouse.spreadsheetId}::${warehouse.tabName}`
     const rows = rowsBySheet.get(sheetKey)!
@@ -358,7 +430,7 @@ export default async function syncOrdersToSheets(container: MedusaContainer) {
     }
   }
 
-  logger.info(`✅ sync-orders-to-sheets done — ${added} new order(s) added`)
+  logger.info(`✅ sync-orders-to-sheets done — ${added} new, ${updated} updated`)
 }
 
 export const config = {

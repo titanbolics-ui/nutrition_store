@@ -193,3 +193,30 @@
 - **Symptom:** logged-in customers placing orders still got "Activate account" in every order email.
 - **Fix:** every email sender now checks `listCustomers({ email, has_account: true })` and passes `hasRegisteredAccount` to the template; all 9 templates render `ActivateAccountBlock` only when `!hasRegisteredAccount`. Senders covered: order-placed workflow (token step now returns `{ token, hasRegisteredAccount }`), payment-captured, shipment-created, delivery-created, order-fulfillment-created, order-edit-notification, lookup/send-link, admin send-payment-notification.
 - **Bonus:** `payment-notification.tsx` still had the old `/us/account/orders/details/` silent fallback (A1 class) — token made required, fallback removed.
+
+## G3 — Sheets sync: edit-added items routed to wrong warehouse (order #1462 / TESTOPLEX E300)
+
+- **ID:** G3
+- **Status:** fixed (2026-06-11)
+- **Symptom:** order #1462 edited after checkout (Testosterone Enanthate → TESTOPLEX E300 ×3, stocked only at "US Domestic [XT-Labs]"); the sheet kept everything under Main Warehouse.
+- **Root cause:** warehouse attribution comes from `order.metadata.warehouse_items` — a snapshot written by the checkout shipping-options hook at CART time. Order edits change items but never the snapshot: removed items linger as ghosts, added items are invisible to the sync job.
+- **Fixes:**
+  1. `src/utils/order-warehouse-items.ts` — `rebuildOrderWarehouseItems()` recomputes the snapshot from current order items via live inventory levels (same rule as the checkout hook; non-inventory items keep their old assignment).
+  2. `src/subscribers/order-edit-warehouse-meta.ts` — rebuilds metadata on every `order-edit.confirmed`.
+  3. Sheets job: `items.*` + variant inventory fields; ghost meta items (removed via edit) skipped with a warning; items missing from the snapshot resolved from live inventory (legacy orders); rows already synced get their Amount/Items/Notes updated when an edit changed them (status/tracking columns untouched; updates applied before inserts so row numbers stay valid).
+  4. `src/scripts/rebuild-warehouse-items.ts` — backfill for already-edited orders (`npx medusa exec ./src/scripts/rebuild-warehouse-items.ts 1462` or no args = all edited orders in 60 days). Must run on the PROD environment to fix prod metadata.
+
+---
+
+## F8 — Feature: 17track auto-delivery detection (2026-06-12)
+
+- **What:** Delivered status was set manually in admin. Now 17track watches active tracking numbers and the backend marks fulfillments delivered automatically — same workflow as the admin "Mark as delivered" button, so the existing `delivery.created` subscriber sends the "Order Delivered" email.
+- **Pool (free plan = 40 active trackings):**
+  - Module `seventeenTrack` (`seventeen_track_number` table) stores which numbers are registered.
+  - Job `sync-17track-pool` (7,37 * * * *): polls statuses (webhook fallback), evicts Delivered/Expired/stale (>45d) tracks from 17track + pool, then fills free slots with the newest shipped, undelivered fulfillments that have a tracking number (labels or fulfillment.metadata).
+  - Webhook `POST /hooks/seventeen-track` — fast path: 17track pushes `TRACKING_UPDATED`; on `Delivered` → `markOrderFulfillmentAsDeliveredWorkflow` → delivery email → `deletetrack` frees the quota slot → pool row removed.
+- **Setup:**
+  1. `SEVENTEEN_TRACK_API_KEY` env (17track dashboard → API settings; key is also the webhook signing secret).
+  2. 17track dashboard → Webhook URL: `https://<backend>/hooks/seventeen-track` (signature `sign` = sha256(rawBody + "/" + key); raw body preserved via `src/api/middlewares.ts`).
+  3. Migration: `npx medusa db:migrate` (table `seventeen_track_number`).
+- **Notes:** duplicate tracking numbers across orders are registered once (first/newest fulfillment wins); admin manual "Mark as delivered" still works — webhook/job detect `delivered_at` already set and only clean up the slot.
