@@ -34,3 +34,6 @@ postgres_data/
 redis_data/
 medusa_backup.sql
 docker-compose.yml
+
+# Contains customer PII (emails, raw phones) — never commit
+phone-normalization-report.json

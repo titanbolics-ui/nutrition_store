@@ -3,6 +3,11 @@ import MagicTokenModule, { MAGIC_TOKEN_MODULE } from "./src/modules/magic-token"
 
 loadEnv(process.env.NODE_ENV || "development", process.cwd());
 
+// Integration tests (medusaIntegrationTestRunner) truncate the DB between
+// tests; redis-backed async modules leak jobs across that boundary and crash
+// the suite — use the in-memory implementations under jest instead.
+const isTest = process.env.NODE_ENV === "test";
+
 module.exports = defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
@@ -122,27 +127,35 @@ module.exports = defineConfig({
         ],
       },
     },
-    {
-      resolve: "@medusajs/event-bus-redis",
-      key: Modules.EVENT_BUS,
-      options: {
-        redisUrl: process.env.REDIS_URL,
-      },
-    },
-    {
-      resolve: "@medusajs/medusa/cache-redis",
-      options: {
-        redisUrl: process.env.REDIS_URL,
-      },
-    },
-    {
-      resolve: "@medusajs/medusa/workflow-engine-redis",
-      options: {
-        redis: {
-          url: process.env.REDIS_URL,
-        },
-      },
-    },
+    ...(isTest
+      ? [
+          { resolve: "@medusajs/medusa/event-bus-local", key: Modules.EVENT_BUS },
+          { resolve: "@medusajs/medusa/cache-inmemory" },
+          { resolve: "@medusajs/medusa/workflow-engine-inmemory" },
+        ]
+      : [
+          {
+            resolve: "@medusajs/event-bus-redis",
+            key: Modules.EVENT_BUS,
+            options: {
+              redisUrl: process.env.REDIS_URL,
+            },
+          },
+          {
+            resolve: "@medusajs/medusa/cache-redis",
+            options: {
+              redisUrl: process.env.REDIS_URL,
+            },
+          },
+          {
+            resolve: "@medusajs/medusa/workflow-engine-redis",
+            options: {
+              redis: {
+                url: process.env.REDIS_URL,
+              },
+            },
+          },
+        ]),
   ],
   plugins: [
     { resolve: "@agilo/medusa-analytics-plugin", options: {} },

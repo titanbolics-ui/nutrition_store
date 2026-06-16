@@ -43,7 +43,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       const payload: Record<string, unknown> = {}
       if (first_name) payload.first_name = first_name
       if (last_name)  payload.last_name  = last_name
-      if (phone)      payload.phone      = normalizePhone(phone)
+      if (phone)      payload.phone      = normalizePhone(phone) ?? phone
 
       const activateToken = await magicTokenSvc.generateToken({
         email,
