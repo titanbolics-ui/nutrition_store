@@ -2,9 +2,16 @@ import { MedusaContainer } from "@medusajs/types"
 import { Modules } from "@medusajs/framework/utils"
 import { createOrderShipmentWorkflow } from "@medusajs/core-flows"
 import { auth as googleAuth, sheets as sheetsClient, sheets_v4 } from "@googleapis/sheets"
+import { TRACKING_BASE_URL } from "../utils/tracking"
+
+// Official USPS tracking page — the domestic warehouse ships via USPS, so its
+// links point here instead of the default carrier page used by Main.
+const USPS_TRACKING_BASE_URL = "https://tools.usps.com/go/TrackConfirmAction?tLabels="
 
 // ─── Warehouse sheet configs ──────────────────────────────────────────────────
-// Add a new block per warehouse when ready. Leave SPREADSHEET_ID empty to skip.
+// One block per warehouse; keep these in sync with sync-orders-to-sheets.ts
+// (same env vars → read and write target the same sheet/location).
+// Leave SPREADSHEET_ID empty to skip a warehouse.
 //
 // Sheet structure (row 1 = header, data starts row 2):
 //   A: Order #        B: Amount      C: Date         D: Payment method
@@ -14,17 +21,18 @@ import { auth as googleAuth, sheets as sheetsClient, sheets_v4 } from "@googleap
 const WAREHOUSE_SHEETS = [
   {
     name: "Main Warehouse",
-    spreadsheetId: process.env.SHEETS_MAIN_SPREADSHEET_ID      || "",
-    tabName:       process.env.SHEETS_MAIN_TAB_NAME             || "Sheet1",
-    locationId:    process.env.SHEETS_MAIN_LOCATION_ID          || "", // stock_location id in Medusa
+    spreadsheetId:   process.env.SHEETS_MAIN_SPREADSHEET_ID      || "",
+    tabName:         process.env.SHEETS_MAIN_TAB_NAME             || "Sheet1",
+    locationId:      process.env.SHEETS_MAIN_LOCATION_ID          || "", // stock_location id in Medusa
+    trackingBaseUrl: process.env.SHEETS_MAIN_TRACKING_BASE_URL    || TRACKING_BASE_URL,
   },
-  // ── Future warehouses (add env vars when ready) ───────────────────────────
-  // {
-  //   name: "US Domestic",
-  //   spreadsheetId: process.env.SHEETS_US_DOMESTIC_SPREADSHEET_ID || "",
-  //   tabName:       process.env.SHEETS_US_DOMESTIC_TAB_NAME        || "Sheet1",
-  //   locationId:    process.env.SHEETS_US_DOMESTIC_LOCATION_ID     || "",
-  // },
+  {
+    name: "US Domestic",
+    spreadsheetId:   process.env.SHEETS_US_DOMESTIC_SPREADSHEET_ID || "",
+    tabName:         process.env.SHEETS_US_DOMESTIC_TAB_NAME        || "Sheet1",
+    locationId:      process.env.SHEETS_US_DOMESTIC_LOCATION_ID     || "",
+    trackingBaseUrl: process.env.SHEETS_US_DOMESTIC_TRACKING_BASE_URL || USPS_TRACKING_BASE_URL,
+  },
 ].filter((w) => w.spreadsheetId) // skip warehouses with no sheet configured
 
 // ─── Column indices (0-based, matching the existing sheet) ───────────────────
@@ -193,7 +201,7 @@ async function processWarehouseSheet(
         )
       }
 
-      const TRACKING_BASE_URL = "https://dealer-send.com/en-US/track-my-shipment?trackingNumber="
+      const trackingBaseUrl = warehouse.trackingBaseUrl
 
       if (!target.shipped_at) {
         // Not yet shipped → run the official workflow:
@@ -211,8 +219,8 @@ async function processWarehouseSheet(
             items,
             labels: [{
               tracking_number: trackingNumber,
-              tracking_url: `${TRACKING_BASE_URL}${trackingNumber}`,
-              label_url: `${TRACKING_BASE_URL}${trackingNumber}`,
+              tracking_url: `${trackingBaseUrl}${trackingNumber}`,
+              label_url: `${trackingBaseUrl}${trackingNumber}`,
             }],
           },
         })
@@ -221,9 +229,17 @@ async function processWarehouseSheet(
           ` (fulfillment ${target.id.slice(0, 16)}…)`
         )
       } else {
-        // Already shipped → just update metadata on the fulfillment directly
-        // (no new event, no duplicate email)
+        // Already shipped (e.g. marked shipped before tracking was entered).
+        // Attach a real label so every surface (email, storefront, lookup,
+        // 17track) builds the correct per-warehouse URL from fulfillment.labels.
+        // Direct module update → no shipment.created event → no duplicate email.
+        // target had no tracking label (hasTracking guard above), so this adds one.
         await fulfillmentModule.updateFulfillment(target.id, {
+          labels: [{
+            tracking_number: trackingNumber,
+            tracking_url: `${trackingBaseUrl}${trackingNumber}`,
+            label_url: `${trackingBaseUrl}${trackingNumber}`,
+          }],
           metadata: {
             ...(target.metadata ?? {}),
             tracking_number: trackingNumber,

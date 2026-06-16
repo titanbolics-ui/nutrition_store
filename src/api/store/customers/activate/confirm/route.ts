@@ -80,13 +80,16 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
     const first_name = pick("first_name")
     const last_name  = pick("last_name")
     const rawPhone   = pick("phone")
+    // Country of the latest order is the best guess for parsing national-format
+    // phones; invalid input is stored as entered (read-time checks gate on E.164).
+    const phoneCountry = latestShippingAddress?.country_code ?? undefined
 
     customer = await customerModuleSvc.createCustomers({
       email,
       has_account: true,
       ...(first_name ? { first_name } : {}),
       ...(last_name  ? { last_name }  : {}),
-      ...(rawPhone   ? { phone: normalizePhone(rawPhone) } : {}),
+      ...(rawPhone   ? { phone: normalizePhone(rawPhone, phoneCountry) ?? rawPhone } : {}),
     })
 
     // Seed the address book from the latest order — next checkout is prefilled
@@ -103,7 +106,8 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
           province: latestShippingAddress.province ?? undefined,
           country_code: latestShippingAddress.country_code ?? undefined,
           phone: latestShippingAddress.phone
-            ? normalizePhone(String(latestShippingAddress.phone))
+            ? normalizePhone(String(latestShippingAddress.phone), phoneCountry) ??
+              String(latestShippingAddress.phone)
             : undefined,
           is_default_shipping: true,
         })
