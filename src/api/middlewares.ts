@@ -9,8 +9,8 @@ import { normalizeBodyPhone } from "../utils/phone"
 export default defineMiddlewares({
   routes: [
     {
-      // 17track webhook signature = sha256(rawBody + "/" + key) — needs the raw bytes
-      matcher: "/hooks/seventeen-track",
+      // EasyPost webhook signature = HMAC-SHA256 over the raw body — needs the raw bytes
+      matcher: "/hooks/easypost",
       method: ["POST"],
       bodyParser: { preserveRawBody: true },
     },

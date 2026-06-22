@@ -105,19 +105,24 @@ export default async function deliveryCreatedHandler({
   );
   const is_partial = remaining_items.length > 0;
 
-  // Build delivered_items for this fulfillment
+  // Build delivered_items reflecting the FINAL order (after any edits): map each
+  // fulfilled line to its current order item, drop lines removed by an edit, and
+  // take title/variant/quantity from the order — not the pre-edit fulfillment
+  // snapshot. Fall back to current order items if the mapping is empty.
   const orderItemMap: Record<string, any> = {};
   for (const item of orderItems) { orderItemMap[item.id] = item; }
 
-  const delivered_items = (fulfillment?.items ?? []).map((fi: any) => {
-    const oi = fi.line_item_id ? orderItemMap[fi.line_item_id] : null;
-    return {
-      title: oi?.product_title || fi.title,
-      variant: oi?.variant_title,
-      quantity: Number(fi.quantity),
-      thumbnail: oi?.thumbnail,
-    };
-  });
+  const finalFulfilled = (fulfillment?.items ?? [])
+    .map((fi: any) => (fi.line_item_id ? orderItemMap[fi.line_item_id] : null))
+    .filter(Boolean);
+  const sourceItems = finalFulfilled.length ? finalFulfilled : orderItems;
+
+  const delivered_items = sourceItems.map((oi: any) => ({
+    title: oi.product_title ?? oi.title,
+    variant: oi.variant_title ?? undefined,
+    quantity: Number(oi.quantity),
+    thumbnail: oi.thumbnail ?? undefined,
+  }));
 
   // Token must be generated here — raw value only exists at generateToken return
   const magicTokenSvc = container.resolve(MAGIC_TOKEN_MODULE) as any;
