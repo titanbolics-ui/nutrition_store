@@ -1,5 +1,6 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules, ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { registerTrackerForFulfillment } from "../../../../../utils/easypost-tracker"
 
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
   const { id: fulfillmentId } = req.params
@@ -42,6 +43,10 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
       },
     },
   }])
+
+  // Manual entry writes only order.metadata (no label / shipment.created), so
+  // register the EasyPost tracker directly with the explicit tracking number.
+  await registerTrackerForFulfillment(req.scope, fulfillmentId, tracking_number.trim())
 
   return res.status(200).json({
     fulfillment_id: fulfillmentId,
