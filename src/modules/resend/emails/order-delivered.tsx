@@ -2,7 +2,7 @@ import {
   Body, Container, Head, Html, Preview,
   Section, Text, Tailwind, Hr, Row, Column, Link, Img,
 } from "@react-email/components";
-import { BigNumberValue, OrderDTO } from "@medusajs/types";
+import { OrderDTO } from "@medusajs/types";
 import * as React from "react";
 import { ViewOrderButton, ActivateAccountBlock } from "./_shared";
 
@@ -40,23 +40,6 @@ function OrderDeliveredEmailComponent({
   orderViewToken,
   hasRegisteredAccount = false,
 }: OrderDeliveredEmailProps) {
-  const formatter = new Intl.NumberFormat([], {
-    style: "currency",
-    currencyDisplay: "narrowSymbol",
-    currency: order.currency_code || "USD",
-  });
-
-  const formatPrice = (price: BigNumberValue): string => {
-    const n = Number(price as any);
-    if (!Number.isNaN(n) && n !== 0) return formatter.format(n);
-    if (typeof price === "number") return formatter.format(price);
-    if (typeof price === "string") {
-      const p = parseFloat(price);
-      return Number.isNaN(p) ? price : formatter.format(p);
-    }
-    return String(price ?? "");
-  };
-
   const customerName = order.shipping_address?.first_name || "there";
 
   const items: DeliveredItem[] =
@@ -120,7 +103,7 @@ function OrderDeliveredEmailComponent({
                       {is_partial ? "This shipment delivered" : "Delivery confirmed"}
                     </Text>
                     <Text style={{ color: "#ffffff", fontSize: 13, fontWeight: 600, margin: 0 }}>
-                      Order #{`ONX-${order.display_id}`} — {formatPrice(order.total)}
+                      Order #{`ONX-${order.display_id}`}
                     </Text>
                   </Column>
                   <Column align="right">
