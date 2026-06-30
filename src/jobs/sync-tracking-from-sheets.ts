@@ -3,7 +3,6 @@ import { Modules } from "@medusajs/framework/utils"
 import { createOrderShipmentWorkflow } from "@medusajs/core-flows"
 import { auth as googleAuth, sheets as sheetsClient, sheets_v4 } from "@googleapis/sheets"
 import { TRACKING_BASE_URL } from "../utils/tracking"
-import { registerTrackerForFulfillment } from "../utils/easypost-tracker"
 
 // Official USPS tracking page — the domestic warehouse ships via USPS, so its
 // links point here instead of the default carrier page used by Main.
@@ -231,8 +230,8 @@ async function processWarehouseSheet(
         )
       } else {
         // Already shipped (e.g. marked shipped before tracking was entered).
-        // Attach a real label so every surface (email, storefront, lookup)
-        // builds the correct per-warehouse URL from fulfillment.labels.
+        // Attach a real label so every surface (email, storefront, lookup,
+        // 17track) builds the correct per-warehouse URL from fulfillment.labels.
         // Direct module update → no shipment.created event → no duplicate email.
         // target had no tracking label (hasTracking guard above), so this adds one.
         await fulfillmentModule.updateFulfillment(target.id, {
@@ -246,8 +245,6 @@ async function processWarehouseSheet(
             tracking_number: trackingNumber,
           },
         })
-        // No shipment.created here → register the EasyPost tracker directly.
-        await registerTrackerForFulfillment(container, target.id, trackingNumber)
         logger.info(
           `  ✅ Row ${sheetRow}: ONX-${displayId} → tracking updated (already shipped) ${trackingNumber}` +
           ` (fulfillment ${target.id.slice(0, 16)}…)`
