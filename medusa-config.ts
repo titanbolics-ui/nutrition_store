@@ -37,6 +37,10 @@ module.exports = defineConfig({
       key: MAGIC_TOKEN_MODULE,
     },
     {
+      resolve: "./src/modules/seventeen-track",
+      key: "seventeenTrack",
+    },
+    {
       resolve: "@medusajs/medusa/payment",
       options: {
         providers: [
