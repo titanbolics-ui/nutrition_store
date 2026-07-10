@@ -25,10 +25,6 @@ build
 
 .medusa
 
-.claude/
-CLAUDE.md
-docs/
-
 # Local Docker data and local DB dumps
 postgres_data/
 redis_data/

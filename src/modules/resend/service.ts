@@ -29,6 +29,7 @@ import { orderViewLinkEmail } from "./emails/order-view-link";
 import { activateConfirmEmail } from "./emails/activate-confirm";
 import { magicLinkLoginEmail } from "./emails/magic-link-login";
 import { registerConfirmEmail } from "./emails/register-confirm";
+import { waitlistConfirmationEmail } from "./emails/waitlist-confirmation";
 
 type ResendOptions = {
   api_key?: string;
@@ -72,6 +73,7 @@ enum Templates {
   ACTIVATE_CONFIRM = "activate-confirm",
   MAGIC_LINK_LOGIN = "magic-link-login",
   REGISTER_CONFIRM = "register-confirm",
+  WAITLIST_CONFIRMATION = "waitlist-confirmation",
 }
 
 const templates: { [key in Templates]?: (props: unknown) => React.ReactNode } =
@@ -95,6 +97,7 @@ const templates: { [key in Templates]?: (props: unknown) => React.ReactNode } =
     [Templates.ACTIVATE_CONFIRM]: activateConfirmEmail,
     [Templates.MAGIC_LINK_LOGIN]: magicLinkLoginEmail,
     [Templates.REGISTER_CONFIRM]: registerConfirmEmail,
+    [Templates.WAITLIST_CONFIRMATION]: waitlistConfirmationEmail,
   };
 
 class ResendNotificationProviderService extends AbstractNotificationProviderService {
@@ -211,6 +214,8 @@ class ResendNotificationProviderService extends AbstractNotificationProviderServ
         return "Your Onyx Genetics login link";
       case Templates.REGISTER_CONFIRM:
         return "Confirm your Onyx Genetics registration";
+      case Templates.WAITLIST_CONFIRMATION:
+        return "You're on the waitlist";
       default:
         return "New Email";
     }
