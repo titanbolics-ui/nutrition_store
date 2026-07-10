@@ -1,5 +1,6 @@
 import { loadEnv, defineConfig, Modules } from "@medusajs/framework/utils";
 import MagicTokenModule, { MAGIC_TOKEN_MODULE } from "./src/modules/magic-token";
+import WaitlistModule, { WAITLIST_MODULE } from "./src/modules/waitlist";
 
 loadEnv(process.env.NODE_ENV || "development", process.cwd());
 
@@ -35,6 +36,10 @@ module.exports = defineConfig({
     {
       resolve: "./src/modules/magic-token",
       key: MAGIC_TOKEN_MODULE,
+    },
+    {
+      resolve: "./src/modules/waitlist",
+      key: WAITLIST_MODULE,
     },
     {
       resolve: "./src/modules/seventeen-track",
