@@ -1,0 +1,56 @@
+{
+  "type": "compound",
+  "active_ingredient": "Oxandrolone",
+  "alsoKnownAs": [
+    "Anavar",
+    "Oxandrolonum",
+    "Var",
+    "Oxandrin"
+  ],
+  "overview": {
+    "what": "Oxandrolone, widely known by its brand name Anavar, is a mild yet highly effective oral anabolic steroid derived from dihydrotestosterone (DHT). Produced by ZPHC, it is one of the most popular compounds in bodybuilding due to its exceptional safety profile and its ability to promote lean muscle mass and strength without significant side effects. It is often referred to as a 'boutique' steroid because of its high quality and specific use in cutting and strength cycles.",
+    "howItWorks": "Oxandrolone works by significantly increasing nitrogen retention and protein synthesis in muscle tissue. A unique characteristic of Oxandrolone is its ability to stimulate phosphocreatine synthesis within the muscle cells, which directly enhances ATP (Adenosine Triphosphate) production, leading to dramatic increases in strength and endurance. It does not aromatize into estrogen, ensuring that all weight gained is pure lean muscle tissue without water retention."
+  },
+  "dosage": {
+    "beginner": "20–30 mg daily",
+    "intermediate": "40–60 mg daily",
+    "advanced": "80–100 mg daily",
+    "cycleLength": "6–8 weeks",
+    "administration": "Oral (tablets), typically split into two doses daily due to its half-life.",
+    "pct": "Post-Cycle Therapy (PCT) is required. Although Oxandrolone is mild, it can still suppress natural testosterone at effective dosages. A standard protocol with Clomid or Nolvadex is recommended."
+  },
+  "profile": {
+    "anabolicRating": "322-630",
+    "androgenicRating": "24",
+    "ester": "None (Oral)",
+    "halfLife": "9–10 hours",
+    "aromatization": "None",
+    "detectionTime": "3 weeks"
+  },
+  "sideEffects": {
+    "estrogenic": "None. Does not cause water retention, bloating, or gynecomastia.",
+    "androgenic": "Very low. Potential for oily skin or acne in high doses, but virilization risk in women is minimal compared to other steroids.",
+    "cardiovascular": "May impact cholesterol levels by reducing HDL (good cholesterol) and increasing LDL (bad cholesterol). Monitor lipid profiles during use.",
+    "suppression": "Low to moderate suppression of natural testosterone production, depending on dosage and duration."
+  },
+  "faq": [
+    {
+      "q": "Is Oxandrolone safe for women?",
+      "a": "Yes, Oxandrolone is considered the most 'female-friendly' steroid due to its low androgenic rating. Women typically use 5–10 mg per day with minimal risk of virilization."
+    },
+    {
+      "q": "Can I use Oxandrolone for bulking?",
+      "a": "While it can be used for lean mass, it is primarily effective for cutting, strength gains, and body recomposition rather than adding massive weight."
+    },
+    {
+      "q": "Do I need liver protection?",
+      "a": "Oxandrolone is a C17-alpha alkylated steroid, but it is unique because it is partly metabolized by the kidneys, making it significantly less hepatotoxic than Dianabol or Winstrol. However, mild liver support is still advised."
+    }
+  ],
+  "contentBlocks": [
+    {
+      "type": "callout",
+      "body": "Why Choose ZPHC Oxandrolone? ZPHC (Zhengzhou Pharmaceutical Co. Ltd) is known for high-purity pharmaceutical standards. Their Oxandrolone provides consistent dosing and 99%+ purity, ensuring that athletes get the maximum performance-enhancing benefits without the impurities often found in lower-grade alternatives."
+    }
+  ]
+}

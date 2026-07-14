@@ -5,6 +5,7 @@ import {
   MedusaResponse,
 } from "@medusajs/framework/http"
 import { normalizeBodyPhone } from "../utils/phone"
+import { productContentMiddlewares } from "./admin/products/middlewares"
 
 export default defineMiddlewares({
   routes: [
@@ -25,5 +26,6 @@ export default defineMiddlewares({
         },
       ],
     },
+    ...productContentMiddlewares,
   ],
 })

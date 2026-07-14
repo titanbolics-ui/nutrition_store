@@ -1,0 +1,57 @@
+{
+  "type": "compound",
+  "active_ingredient": "Testosterone Enanthate",
+  "alsoKnownAs": [
+    "Test E",
+    "Testen",
+    "Delatestryl",
+    "Testosterone Enan",
+    "Heptanoate"
+  ],
+  "overview": {
+    "what": "Testosterone Enanthate is one of the most widely used and essential anabolic steroids in the world of performance enhancement. Produced by ZPHC to pharmaceutical standards, it is a long-acting oil-based injectable designed to provide a steady release of testosterone into the bloodstream. It serves as the fundamental base for almost every steroid cycle, helping users achieve significant gains in muscle mass, strength, and overall athletic performance.",
+    "howItWorks": "As a long-ester variant of testosterone, it works by increasing nitrogen retention in the muscles, which is critical for protein synthesis and tissue growth. It also boosts the production of Red Blood Cells (RBC) and increases levels of IGF-1 (Insulin-Like Growth Factor 1). Furthermore, it inhibits glucocorticoid hormones (stress hormones like cortisol), preventing muscle breakdown and ensuring the body remains in a highly anabolic state."
+  },
+  "dosage": {
+    "beginner": "250–500 mg per week",
+    "intermediate": "500–750 mg per week",
+    "advanced": "750–1000 mg per week",
+    "cycleLength": "10–14 weeks",
+    "administration": "Intramuscular (IM) injection, typically administered 1–2 times per week to maintain stable blood levels.",
+    "pct": "Post-Cycle Therapy (PCT) should begin approximately 2–3 weeks after the final injection. A standard protocol using HCG, Clomid, and Nolvadex is essential to restore natural testosterone production."
+  },
+  "profile": {
+    "anabolicRating": "100",
+    "androgenicRating": "100",
+    "ester": "Enanthate",
+    "halfLife": "8–10 days",
+    "aromatization": "High (converts to estrogen)",
+    "detectionTime": "3 months"
+  },
+  "sideEffects": {
+    "estrogenic": "High risk of water retention, bloating, and gynecomastia due to aromatization. Use of an Aromatase Inhibitor (AI) like Arimidex or Aromasin is recommended.",
+    "androgenic": "Potential for oily skin, acne, and accelerated male pattern baldness in those genetically predisposed.",
+    "cardiovascular": "May increase blood pressure and negatively impact cholesterol levels (HDL/LDL). Regular monitoring is advised.",
+    "suppression": "Complete suppression of natural testosterone production (HPTA shutdown); proper PCT is mandatory."
+  },
+  "faq": [
+    {
+      "q": "How long does it take to see results from Test Enanthate?",
+      "a": "Due to its long ester, it typically takes 4–5 weeks to notice significant changes in strength and physique, although metabolic benefits begin sooner."
+    },
+    {
+      "q": "Is ZPHC Testosterone Enanthate prone to causing 'test flu'?",
+      "a": "ZPHC products are known for high purity and pharmaceutical-grade carrier oils (usually grape seed oil), which minimizes post-injection pain (PIP) and immune responses compared to lower-grade labs."
+    },
+    {
+      "q": "Should I stack it with anything?",
+      "a": "Yes, it is the perfect base for almost any stack. Common combinations include Deca-Durabolin and Dianabol for bulking, or Trenbolone and Anavar for cutting."
+    }
+  ],
+  "contentBlocks": [
+    {
+      "type": "callout",
+      "body": "ZPHC Quality Assurance: Testosterone Enanthate from ZPHC is manufactured in a GMP-certified facility, ensuring 99%+ purity and accurate concentration. Each vial features a scratch-off verification code to guarantee authenticity and prevent counterfeiting."
+    }
+  ]
+}

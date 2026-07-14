@@ -153,3 +153,154 @@ true → Resend called once, contact id stored; Resend failure/throw → signup 
 succeeds, `resend_contact_id` stays null; bad Turnstile token → rejected, nothing created;
 confirmation email sent exactly once per new signup, not resent on duplicate. All green
 (30 unit + 16 integration total, including pre-existing suites); `npm run build` clean.
+
+---
+
+## Storefront Redesign Stage C — metadata.content schema + validation — DONE (2026-07-10)
+
+Source spec: `nutrition_store_front/docs/storefront-redesign-tech-spec.md` (this repo's copy
+of that spec doesn't exist — only found in the front repo; flagged as a discrepancy).
+Stages A/B of that spec were intentionally reverted by the user — categories/variants are
+being done manually in prod Admin, not automated.
+
+**What:**
+- `src/utils/product-content-schema.ts` — zod discriminated union on `type`
+  (`"compound" | "peptide"`), each with its required fields per the spec, plus shared
+  optional `coaUrl`/`faq[]`/`contentBlocks[]`/`alsoKnownAs`. `validateProductContent(raw)`
+  returns a single readable, field-named error on the first zod issue (e.g. `"Invalid
+  metadata.content: dosage.beginner — ..."`), or the parsed content.
+- `src/api/admin/products/middlewares.ts` + one-line registration in
+  `src/api/middlewares.ts` — plain inspect-and-short-circuit middleware (mirrors the
+  existing `/store/customers/me` phone-normalization entry) on `POST /admin/products` and
+  `POST /admin/products/:id`. Only reads `metadata.content`; every other field in the body
+  passes through untouched. Rejects with `400` before the product workflow runs, since
+  `updateProductsWorkflow`'s only hook (`productsUpdated`) fires after the DB write —
+  confirmed by reading `@medusajs/core-flows`'s compiled workflow, too late to reject.
+
+**Fix (2026-07-11, after first real Admin UI attempt):** `validateProductContent` now
+accepts a JSON-encoded **string**, not just an already-parsed object. Admin's generic
+metadata table (the key/value editor visible for `form`/`class`/etc.) submits every value
+as a plain string — that's the actual, only way this content gets authored per this repo's
+own `CLAUDE.md` ("Editing stays manual JSON for now"), so rejecting a string outright
+(`"expected object, received string"`) blocked the real workflow entirely. The middleware
+now parses a string with `JSON.parse` before validating, and on success **normalizes it in
+place** to the parsed object (patching both `req.body.metadata` and
+`req.validatedBody.metadata` — the core route reads from the latter, confirmed by the
+first version of this fix silently no-op'ing until both were patched) so what's actually
+persisted, and what the storefront reads, is always a real object, never the raw string. A
+string that isn't valid JSON still gets a readable `Invalid metadata.content: content —
+Invalid JSON: ...` error, same as any other malformed shape.
+
+**Fix 2 (2026-07-11, same session):** the real product content the user tried to save had a
+`contentBlocks` entry shaped `{ title, content }` (natural author instinct) instead of the
+spec's `{ type, body }`. Validation correctly rejected it, but zod's default message for a
+discriminated-union mismatch was a bare `"Invalid input"` — technically named the field
+(`contentBlocks.0.type`) but gave no hint what was actually expected, which is exactly the
+"unreadable error" this validation was built to avoid. `validateProductContent` now
+special-cases the two `discriminatedUnion` mismatches (top-level `content.type` and each
+`contentBlocks[].type`) to spell out the accepted literal values, e.g. `"missing or
+unrecognized block type. Each contentBlocks entry needs "type" set to one of: "text",
+"image", "callout", "table"."`. Also added an optional `title` field to the `text` and
+`callout` block shapes (additive, not spec'd but a real, low-risk authoring need — a
+titled paragraph/callout, which the author was already trying to write) — the storefront
+renders it as a heading above the body when present.
+
+**Deviations from the spec doc:**
+- `reconstitution` is deliberately **not** in this schema — per this turn's explicit
+  instructions it lives on variant metadata instead
+  (`variant.metadata.reconstitution = { enabled, vialAmount, unit }`), same convention as
+  the existing `restock_eta`. Not validated server-side this stage (frontend reads it
+  defensively); Stage D can tighten this when it builds the real calculator.
+- `profile.*`/`dosage.*` fields are typed as `string`, not number/enum — the spec's inline
+  shape gives no numeric/enum constraint and real values ("100:100", "Moderate") don't fit
+  a clean enum. `product-metadata-schema.md`, referenced as the fuller schema source, was
+  not found anywhere in either repo.
+
+**Tests:** `npm run test:unit` — `src/utils/__tests__/product-content-schema.unit.spec.ts`
+(13 cases: valid compound/peptide, missing required field names the field, unknown `type`
+with the accepted-values message, all 4 contentBlocks types valid, malformed block names
+the field, non-JSON string doesn't throw, valid content JSON-encoded as a string is
+accepted and parsed, malformed/truncated JSON string rejected with a readable "Invalid
+JSON" error, **contentBlocks entry with wrong field names (title/content instead of
+type/body) rejected with a message spelling out the accepted block types**, **unrecognized
+top-level type spells out the accepted values**, **optional `title` accepted on text/
+callout blocks**, **text/callout blocks still valid without a title**).
+`npm run test:integration:http` — `integration-tests/http/product-content-validation.spec.ts`
+(5 cases against a real admin user + real `POST /admin/products/:id`: invalid content →
+400 naming the field, product unchanged; valid content → 200, persisted; no content at all
+→ 200, succeeds exactly as before; content submitted as a JSON string → 200, persisted as
+a real object; malformed JSON string → 400, "Invalid JSON"). All green (43 unit + 21
+integration total, including pre-existing suites). Also reproduced both fixes against the
+live local dev server/DB directly (same request shape the Admin dashboard sends) to
+confirm outside the test harness too, then reverted.
+
+**Manual verification:** patched real products via the running local dev server/DB —
+`delatestryl-300-test-e-1ml-amp-canadabiolabs` (compound) and
+`spectros-140iu-hgh-spectrum-pharma` (HGH, peptide-layout override) — confirmed against
+the storefront, then reverted both back to no `metadata.content`. A throwaway local admin
+user (`verify-admin@example.com`) was created for this and left in place (Medusa doesn't
+allow a user to self-delete) — harmless local-dev-only account, delete via Admin if
+unwanted.
+
+**Frontend half:** `nutrition_store_front/HANDOFF.md` has the tabs/template-resolution
+side of this stage.
+
+## Content import/export workflow — DONE (2026-07-13)
+
+**What:** git-committed `content/<handle>.json` as the source of truth for product copy,
+with import/export CLI scripts — because Admin's metadata table stores primitives only and
+can't edit the nested `metadata.content` object.
+
+- `src/scripts/import-content.ts` — `npx medusa exec ./src/scripts/import-content.ts
+  [handle...] [dry-run]`. No handle → every `content/*.json`; handles → only those (a
+  requested handle with no file fails loudly). Pure `planContentImport()` /`parseArgs()`
+  exported for unit tests. Each file: JSON.parse → `validateProductContent` (reused from
+  `src/utils/product-content-schema.ts`, same schema the Admin API enforces) → product
+  lookup → `isDeepStrictEqual` vs existing content → created/updated/unchanged/invalid/
+  not_found. Writes via `updateProductsWorkflow` with metadata merged explicitly
+  (`{...existing, content}`) so rank/template/specs survive. Idempotent; invalid files
+  never written (valid ones in the same run still import); `process.exitCode=1` on any
+  invalid/not_found.
+- `src/scripts/export-content.ts` — pulls DB `metadata.content` into `content/*.json`
+  (bootstrap / keep in sync). Validates before writing (skips invalid legacy content with
+  a reason). Canonical serialization (`src/utils/content-files.ts` `serializeContent` =
+  2-space JSON + trailing newline) guarantees export→import round-trips as `unchanged`.
+- `content/README.md` — workflow + filled compound & peptide copy-paste shapes.
+  `content/oxandrolone-zphc.json` — bootstrapped by running export against the local DB.
+- CLAUDE.md — documented the not-editable-in-Admin workflow.
+
+**GOTCHA (important):** `medusa exec`'s own CLI (yargs) intercepts `--options` and errors
+before the script runs — `--dry-run` does NOT work. Pass the flag as the bare positional
+token `dry-run`. Documented in both script headers, README, and CLAUDE.md.
+
+**Verified:** `npm run test:unit` 57/57 (new `import-content.unit.spec.ts` covers malformed
+JSON→invalid, missing `dosage.pct`→invalid naming the field, created, merged metadata keeps
+rank/template, idempotent unchanged, not_found, parseArgs, export→import round-trip;
+`readme-examples.unit.spec.ts` validates the README shapes against the live schema).
+`npm run build` clean. Live against local DB: export created the file; re-import
+`unchanged`; edited a field → real import `updated`, psql confirmed the new value AND an
+injected `rank` key survived the merge; broke the file (removed `dosage.pct`) → `invalid —
+dosage.pct`, exit 1, nothing written; DB restored, final round-trip `unchanged`.
+
+## content файл несе active_ingredient — DONE (2026-07-13)
+
+**What:** `content/<handle>.json` тепер може містити top-level `active_ingredient`. Схема
+content його стирала (підтверджено тестом), тому import відщеплює його ПЕРЕД валідацією і
+пише в плоский `metadata.active_ingredient` (те, що читає підзаголовок сторінки); решта
+валідується як раніше.
+
+- `src/scripts/import-content.ts` — `planContentImport`: `const {active_ingredient, ...rest}
+  = parsed`, валідує `rest` як content; порожній/не-рядок `active_ingredient` → invalid з
+  назвою поля; merged metadata `{...existing, content, active_ingredient?}`; idempotency
+  порівнює І content, І active_ingredient; пропуск поля у файлі не стирає наявне значення.
+- `src/scripts/export-content.ts` + `src/utils/content-files.ts` — новий
+  `serializeContentFile(content, activeIngredient?)`: канонічний порядок
+  `{type, active_ingredient?, ...content}`. Export включає плоский active_ingredient назад у
+  файл. Round-trip export→import = unchanged.
+- `content/README.md`, `CLAUDE.md` — задокументовано.
+
+**Verified:** `test:unit` 62/62 (нові: split у плоский metadata не в content; blank→invalid;
+пропуск не стирає; зміна лише active_ingredient→updated; round-trip з active_ingredient).
+`build` чисто. Live: oxandrolone-zphc — import `updated`, psql: flat active_ingredient=
+Oxandrolone, content НЕ містить active_ingredient, alsoKnownAs=4, ключі цілі; export→import
+→ unchanged.
