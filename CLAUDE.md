@@ -32,13 +32,17 @@ E-commerce backend. Medusa v2 + PostgreSQL. Storefront is a separate repo (Next.
   auth middleware; publishable key stays required.
 
 - Two product templates (compound/peptide) derived from root category; product content is
-  schema-validated JSON in metadata.content + shared contentBlocks[]. See
-  docs/storefront-redesign-tech-spec.md. No external CMS.
-- Manual product display order: metadata.rank (number). Lower = higher in listings. Use
-  multiples of 10 (10, 20, 30…) to allow inserting between two without renumbering. Missing
-  or non-numeric rank is treated as 9999 (sorts last). Enforced storefront-side in
-  nutrition_store_front/src/lib/util/sort-products.ts (sortByRank).
-- Restock estimate: variant.metadata.restock_eta (string, optional). Either an ISO date
-  ("2026-07-20") or free text ("~2 weeks"). Only read when the variant is out of stock.
-  Storefront renders it via resolveStockState/formatRestockEta in
-  nutrition_store_front/src/lib/util/resolve-stock-state.ts.
+schema-validated JSON in metadata.content + shared contentBlocks[]. See
+docs/storefront-redesign-tech-spec.md. No external CMS.
+- `metadata.content` is NOT editable in Admin (nested object; the metadata table stores
+  primitives only). Edit `content/<handle>.json` (git-committed source of truth), then
+  `npx medusa exec ./src/scripts/import-content.ts [handle]`. `export-content.ts` pulls DB
+  content back into the folder. Both validate against product-content-schema.ts before
+  writing; import merges so other metadata keys (rank/template) survive. Flag is the bare
+  token `dry-run`, not `--dry-run` (medusa exec's CLI rejects `--options`). See content/README.md.
+  The file may carry a top-level `active_ingredient` string — it is split out into the flat
+  `metadata.active_ingredient` (feeds the storefront subtitle), NOT stored inside content.
+
+## Design
+- Any UI work happens in the storefront repo. Its design system lives at
+  `nutrition_store_front/docs/frontend-design.md` — read it there, not here.
