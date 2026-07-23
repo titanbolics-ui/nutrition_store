@@ -206,11 +206,11 @@ titled paragraph/callout, which the author was already trying to write) — the 
 renders it as a heading above the body when present.
 
 **Deviations from the spec doc:**
-- `reconstitution` is deliberately **not** in this schema — per this turn's explicit
-  instructions it lives on variant metadata instead
-  (`variant.metadata.reconstitution = { enabled, vialAmount, unit }`), same convention as
-  the existing `restock_eta`. Not validated server-side this stage (frontend reads it
-  defensively); Stage D can tighten this when it builds the real calculator.
+- `reconstitution` is deliberately **not** in the content schema. ~~It lives on variant
+  metadata~~ — **superseded (see "Stage D.2" below): it now lives on PRODUCT metadata**
+  (`metadata.reconstitution = { enabled, unit?, isBlend? }`), authored as a top-level key
+  in `content/<handle>.json` like `active_ingredient` and validated by
+  `validateReconstitution`. No `vialAmount` (the calculator asks the user).
 - `profile.*`/`dosage.*` fields are typed as `string`, not number/enum — the spec's inline
   shape gives no numeric/enum constraint and real values ("100:100", "Moderate") don't fit
   a clean enum. `product-metadata-schema.md`, referenced as the fuller schema source, was
@@ -304,3 +304,60 @@ content його стирала (підтверджено тестом), том�
 `build` чисто. Live: oxandrolone-zphc — import `updated`, psql: flat active_ingredient=
 Oxandrolone, content НЕ містить active_ingredient, alsoKnownAs=4, ключі цілі; export→import
 → unchanged.
+
+## Stage D.2 — reconstitution moved to product metadata (calculator contract) — DONE (2026-07-18)
+
+Cross-repo contract change driven by the storefront (nutrition_store_front Stage D.2): the
+reconstitution calculator gate moved OFF variant metadata ONTO the product, and the vial
+amount became user input (was product data). Backend catches up as the contract owner.
+
+**What:** `reconstitution` is now a flat PRODUCT metadata key, authored as a top-level key
+in `content/<handle>.json` exactly like `active_ingredient` (split out on import into
+`metadata.reconstitution`, never stored inside `content`).
+- Shape: `{ "enabled": true, "unit"?: "mg" | "IU", "isBlend"?: boolean }`. NO `vialAmount`.
+  `unit` optional — storefront auto-resolves mg vs IU (HGH → IU) when absent.
+- `product-content-schema.ts`: added `reconstitutionSchema` (`.strict()`, so a stale
+  variant-era `vialAmount` is rejected, not silently carried) + `validateReconstitution`
+  (same readable, field-named single-error contract as `validateProductContent`; parses a
+  JSON string too).
+- `import-content.ts`: splits `reconstitution` off the file like `active_ingredient`,
+  validates it, compares (`isDeepStrictEqual`), merges into `metadata.reconstitution`.
+  Omitting it never clears an existing value.
+- `export-content.ts` + `content-files.ts`: round-trips it back to the file (key order
+  type → active_ingredient → reconstitution → rest); an invalid/stale existing value is
+  dropped from the file rather than written back as valid.
+- `content/README.md`: documented the new top-level key.
+
+**Not touched:** the Admin `validateProductContent` middleware — `reconstitution` (an
+object) can't be entered in Admin's primitives-only metadata table, so it's authored only
+via `content/<handle>.json` + import-content, same as `metadata.content` itself.
+
+**Verified:** `test:unit` 74/74 (new: reconstitution split into flat metadata not content;
+optional unit/isBlend accepted; `.strict()` rejects vialAmount naming the field; bad unit
+rejected; omit never clears; export→import round-trip unchanged; export drops a stale
+vialAmount shape; 5 `validateReconstitution` schema cases). `build` clean.
+Storefront half + the live dev-DB fixtures: `nutrition_store_front/HANDOFF.md` Stage D.2.
+
+## Storefront Redesign Stage E — brands as product types + US-domestic removal — DONE (2026-07-21)
+
+Brand = Medusa **product type** (user decision 2026-07-21; native entity, one per product,
+Admin-editable under Product → Organize → Type, store-filterable via `type_id`). The three
+in-house brands: **ZPHC, Spectrum Pharma, CanadaBioLabs**.
+
+- `src/scripts/assign-brands.ts` (`npx medusa exec`, bare `dry-run` token, idempotent —
+  skips any product that already has a type, so manual Admin picks survive re-runs):
+  creates the 3 types, auto-assigns by case-insensitive title/handle needle
+  (`zphc`/`spectrum`/`canada`), reports the rest. Ran on dev DB: **158 products,
+  130 assigned (ZPHC 75, Spectrum 36, Canada 19), 28 unmatched (warned, for manual
+  assignment in Admin), 0 ambiguous.** Pure planner `planBrandAssignment` unit-tested
+  (`__tests__/assign-brands.unit.spec.ts`, 6 cases). Type IDs on dev:
+  ZPHC `ptyp_01KY2FSHB2MKQ1692DXZB7RNQ1`, Spectrum `ptyp_01KY2FSHB2BB2R0WS1M5RAXJ1D`,
+  Canada `ptyp_01KY2FSHB2BX9SP6F3J8F7BHW0`.
+- `src/scripts/remove-us-domestic.ts` (same flags, idempotent): unpublished (status →
+  draft, NOT deleted) the 15 "🇺🇸 USA Domestic" products and soft-deleted the
+  "US Domestic" collection (`pcol_01KBQ1ZQXHWBE4XETC851SNMEC`). Supplier is gone; live
+  count dropped 156 → 141. Republish from Admin if it ever returns.
+- Deliberately NOT touched (ops decision): stock location "US Domestic [XT-Labs]",
+  Sheets sync jobs (`sync-orders-to-sheets.ts`, `sync-tracking-from-sheets.ts`),
+  `filter-shipping-options.ts`, order history. That's a separate ops task.
+- `npm run test:unit` 80/80. Storefront half: `nutrition_store_front/HANDOFF.md` Stage E.

@@ -29,6 +29,17 @@ import it is split out into the flat `metadata.active_ingredient` (which feeds
 the product-page subtitle "Oxandrolone — also known as Anavar"). Keep it here
 in the file for convenience; the script routes it to the right place.
 
+Special top-level key `reconstitution` (object, optional): the gate for the
+storefront reconstitution calculator (Stage D). Shape: `{ "enabled": true }`
+with optional `"unit"` (`"mg"` | `"IU"`) and `"isBlend"` (boolean). Like
+`active_ingredient`, it is NOT part of content — on import it is split out into
+the flat `metadata.reconstitution` (which the storefront reads to show the
+Calculator tab). Omit `unit` to let the storefront auto-resolve it (HGH → IU,
+everything else → mg); set it only to override. The vial amount is NOT stored
+here — it is entered by the user in the calculator. A stale variant-era shape
+(anything carrying `vialAmount`, or a value on a variant) is rejected: this key
+now belongs on the product, authored in this file.
+
 `contentBlocks` entries — each needs a `type`: `text`/`callout`
 (`{type, title?, body}`), `image` (`{type, url, caption?}`), or
 `table` (`{type, headers: string[], rows: string[][]}`).

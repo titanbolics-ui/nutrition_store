@@ -104,6 +104,53 @@ export type ValidateProductContentResult =
   | { ok: false; error: string }
 
 /**
+ * Reconstitution gate for the storefront calculator. Lives at PRODUCT level in
+ * flat metadata.reconstitution (NOT inside content, NOT on variants — Stage D.2
+ * moved it off variants because the vial amount is user-entered, not product
+ * data). `unit` is optional: the storefront auto-resolves mg vs IU from the
+ * product (HGH → IU) when it's absent. `.strict()` rejects leftover keys like
+ * the old `vialAmount`, so a stale variant-era shape is caught, not silently
+ * carried.
+ */
+export const reconstitutionSchema = z
+  .object({
+    enabled: z.boolean(),
+    unit: z.enum(["mg", "IU"]).optional(),
+    isBlend: z.boolean().optional(),
+  })
+  .strict()
+
+export type Reconstitution = z.infer<typeof reconstitutionSchema>
+
+export type ValidateReconstitutionResult =
+  | { ok: true; value: Reconstitution }
+  | { ok: false; error: string }
+
+/** Same readable, field-named single-error contract as validateProductContent. */
+export function validateReconstitution(
+  raw: unknown
+): ValidateReconstitutionResult {
+  let candidate: unknown = raw
+  if (typeof raw === "string") {
+    try {
+      candidate = JSON.parse(raw)
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "malformed JSON"
+      return { ok: false, error: `reconstitution — Invalid JSON: ${message}` }
+    }
+  }
+
+  const parsed = reconstitutionSchema.safeParse(candidate)
+  if (parsed.success) {
+    return { ok: true, value: parsed.data }
+  }
+
+  const issue = parsed.error.issues[0]
+  const path = issue.path.length ? `reconstitution.${issue.path.join(".")}` : "reconstitution"
+  return { ok: false, error: `${path} — ${issue.message}` }
+}
+
+/**
  * A typo in metadata.content must never silently corrupt a page — reject with
  * a single readable, field-named error (first zod issue) rather than the full
  * error tree. Caller decides what "absent" means; this only validates when
