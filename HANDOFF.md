@@ -361,3 +361,28 @@ in-house brands: **ZPHC, Spectrum Pharma, CanadaBioLabs**.
   Sheets sync jobs (`sync-orders-to-sheets.ts`, `sync-tracking-from-sheets.ts`),
   `filter-shipping-options.ts`, order history. That's a separate ops task.
 - `npm run test:unit` 80/80. Storefront half: `nutrition_store_front/HANDOFF.md` Stage E.
+
+## Repeat-customer order minimum — DONE (2026-10-29)
+
+**What:** a customer with at least one PAID order can only place orders with item total
+(after discounts, excl. shipping) ≥ `REPEAT_ORDER_MINIMUM` ($150). First order unrestricted;
+unpaid/cancelled orders don't count ("they haven't trusted us with money yet").
+
+- `src/utils/repeat-customer.ts` — `hasPaidOrder` matches identity by email (case-insensitive)
+  AND normalized phone across ALL customer rows (each guest checkout = own customer row).
+  "Paid" = any `payment_collections.payments.captured_at` (same rule as sync-orders-to-sheets;
+  partial capture counts), cancelled excluded. `evaluateOrderMinimum(cartId)` uses cart email,
+  shipping phone (normalized with shipping country), logged-in customer email/phone.
+- `GET /store/carts/:id/order-minimum` → `{ applies, minimum, subtotal, remaining }`.
+  Publishable key required; no past-order data exposed.
+- `src/workflows/hooks/validate-order-minimum.ts` — `completeCartWorkflow.hooks.validate`
+  throws NOT_ALLOWED below the minimum (hard gate; storefront notice is UX only). Runs after
+  Medusa's payment-session check, before order creation.
+- Env: `REPEAT_ORDER_MINIMUM=150` (empty/0/invalid → disabled).
+- Out of scope: admin/WhatsApp draft orders, order edits.
+
+**Known limit:** phone matching relies on `customer.phone` being E.164 (Stage 0 backfill).
+Raw/unparseable legacy phones won't match by phone (email still does).
+
+**Tests:** `src/utils/__tests__/repeat-customer.unit.spec.ts` (21). Live dev smoke on the
+endpoint: repeat $45 → remaining 105; repeat $180 → 0; new email → applies=false.
