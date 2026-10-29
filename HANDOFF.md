@@ -386,3 +386,36 @@ Raw/unparseable legacy phones won't match by phone (email still does).
 
 **Tests:** `src/utils/__tests__/repeat-customer.unit.spec.ts` (21). Live dev smoke on the
 endpoint: repeat $45 → remaining 105; repeat $180 → 0; new email → applies=false.
+
+## PayPal surcharge (5%) — DONE (2026-10-29)
+
+**What:** paying with PayPal (`pp_paypal-manual_paypal-manual`) adds `PAYPAL_SURCHARGE_PERCENT`
+(5%) of items-after-discounts + delivery. User requirement: NOT a line item — a separate entity.
+
+**Mechanism (verified in Medusa 2.15 source + dev E2E):** an extra cart shipping method with
+NO shipping option: `{ name: "PayPal fee (5%)", amount, data/metadata: { payment_surcharge:
+"paypal", percent } }`.
+- Credit lines rejected: `calculateCreditLinesTotal` clamps negative totals to 0.
+- `validateShippingStep` ignores the extra method; `completeCartWorkflow` copies name/amount/
+  data/metadata to the order shipping method.
+- Fulfillment status is item-based → unaffected (E2E: fulfilled+shipped → `shipped`).
+- Admin "Create fulfillment" form + `createOrderFulfillmentWorkflow` fallback use
+  `shipping_methods[0]`: the fee is always created after delivery (ULID order) → delivery
+  stays `[0]` (E2E: fallback picked the delivery option).
+- `refreshCartShippingMethodsWorkflow` drops option-less methods on ANY cart change (and
+  Medusa also deletes payment sessions) → fee disappears, PayPal must be re-selected.
+
+- `src/utils/payment-surcharge.ts` — compute/quote/sync/consistency check.
+- `GET|POST /store/carts/:id/payment-surcharge` — quote for the badge / sync to provider
+  (sync refreshes the payment collection → call BEFORE creating the session).
+- `src/workflows/hooks/validate-complete-cart.ts` (renamed from validate-order-minimum.ts —
+  the validate hook can be consumed only once): order minimum + surcharge consistency
+  ("Payment total changed, please re-select your payment method.").
+- `by-token` order route: shipping methods carry `payment_surcharge: boolean`.
+- order-placed email already lists shipping methods by name → "PayPal fee (5%)" row for free.
+- Sheets sync: Amount uses fixed per-warehouse shipping → fee never reaches the sheets.
+- Env: `PAYPAL_SURCHARGE_PERCENT=5` (empty/0 → disabled).
+
+**Known limits:** admin order "Shipping" total includes the fee; order edits don't recompute it.
+
+**Tests:** `payment-surcharge.unit.spec.ts` (20). Unit suite 121/121. Dev E2E: order #1495.

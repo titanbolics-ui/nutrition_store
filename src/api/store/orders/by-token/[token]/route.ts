@@ -2,6 +2,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { MAGIC_TOKEN_MODULE } from "../../../../../modules/magic-token"
 import { buildTrackingUrl } from "../../../../../utils/tracking"
+import { isSurchargeMethod } from "../../../../../utils/payment-surcharge"
 
 // query.graph returns Medusa BigNumber objects ({ numeric_: ... }) for amounts —
 // they serialize to JSON as objects, breaking Number() math on the frontend
@@ -215,7 +216,11 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       }),
       shipping_methods: (order.shipping_methods ?? [])
         .filter(Boolean)
-        .map((sm: any) => ({ name: sm.name, total: parseNum(sm.total) })),
+        .map((sm: any) => ({
+          name: sm.name,
+          total: parseNum(sm.total),
+          payment_surcharge: isSurchargeMethod(sm),
+        })),
       // provider ids only — needed for guest payment instructions, no amounts/ids
       payment_collections: (order.payment_collections ?? [])
         .filter(Boolean)
