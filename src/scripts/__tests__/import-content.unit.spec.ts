@@ -264,3 +264,132 @@ describe("active_ingredient in the file", () => {
     )
   })
 })
+
+describe("reconstitution in the file (product-level calculator gate)", () => {
+  it("is split off into flat metadata.reconstitution, never into content", () => {
+    const actions = planContentImport(
+      [
+        {
+          handle: "x",
+          raw: JSON.stringify({
+            reconstitution: { enabled: true },
+            ...validCompound,
+          }),
+        },
+      ],
+      [product("x", { rank: 3 })]
+    )
+    expect(actions[0].status).toBe("created")
+    const merged = (actions[0] as any).mergedMetadata
+    expect(merged.reconstitution).toEqual({ enabled: true })
+    expect(merged.rank).toBe(3)
+    expect("reconstitution" in merged.content).toBe(false)
+  })
+
+  it("accepts optional unit and isBlend", () => {
+    const actions = planContentImport(
+      [
+        {
+          handle: "x",
+          raw: JSON.stringify({
+            reconstitution: { enabled: true, unit: "IU", isBlend: true },
+            ...validCompound,
+          }),
+        },
+      ],
+      [product("x", {})]
+    )
+    expect(actions[0].status).toBe("created")
+    expect((actions[0] as any).mergedMetadata.reconstitution).toEqual({
+      enabled: true,
+      unit: "IU",
+      isBlend: true,
+    })
+  })
+
+  it("rejects a stale variant-era shape (unknown key like vialAmount) naming the field", () => {
+    const actions = planContentImport(
+      [
+        {
+          handle: "x",
+          raw: JSON.stringify({
+            reconstitution: { enabled: true, vialAmount: 5, unit: "mg" },
+            ...validCompound,
+          }),
+        },
+      ],
+      [product("x", {})]
+    )
+    expect(actions[0].status).toBe("invalid")
+    expect((actions[0] as any).reason).toContain("reconstitution")
+  })
+
+  it("rejects a bad unit value naming the field", () => {
+    const actions = planContentImport(
+      [
+        {
+          handle: "x",
+          raw: JSON.stringify({
+            reconstitution: { enabled: true, unit: "iu" },
+            ...validCompound,
+          }),
+        },
+      ],
+      [product("x", {})]
+    )
+    expect(actions[0].status).toBe("invalid")
+    expect((actions[0] as any).reason).toContain("reconstitution")
+  })
+
+  it("omitting reconstitution from the file never clears an existing flat value", () => {
+    const actions = planContentImport(
+      [{ handle: "x", raw: JSON.stringify(validCompound) }],
+      [
+        product("x", {
+          reconstitution: { enabled: true },
+          content: validCompound,
+        }),
+      ]
+    )
+    expect(actions).toEqual([{ handle: "x", status: "unchanged" }])
+  })
+
+  it("round-trips: export writes it top-level, import reports unchanged", () => {
+    const productMeta = {
+      reconstitution: { enabled: true, isBlend: true },
+      content: validCompound,
+    }
+    const exportActions = planContentExport(
+      [{ handle: "x", metadata: productMeta }],
+      new Map()
+    )
+    const fileBody = (exportActions[0] as any).fileBody
+    expect(JSON.parse(fileBody).reconstitution).toEqual({
+      enabled: true,
+      isBlend: true,
+    })
+
+    const importActions = planContentImport(
+      [{ handle: "x", raw: fileBody }],
+      [product("x", productMeta)]
+    )
+    expect(importActions).toEqual([{ handle: "x", status: "unchanged" }])
+  })
+
+  it("export drops a stale variant-era reconstitution (with vialAmount) from the file", () => {
+    const exportActions = planContentExport(
+      [
+        {
+          handle: "x",
+          metadata: {
+            reconstitution: { enabled: true, vialAmount: 5, unit: "mg" },
+            content: validCompound,
+          },
+        },
+      ],
+      new Map()
+    )
+    const fileBody = (exportActions[0] as any).fileBody
+    expect("reconstitution" in JSON.parse(fileBody)).toBe(false)
+  })
+})

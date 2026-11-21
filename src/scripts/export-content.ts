@@ -2,7 +2,10 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs"
 import { join } from "path"
 import { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import { validateProductContent } from "../utils/product-content-schema"
+import {
+  validateProductContent,
+  validateReconstitution,
+} from "../utils/product-content-schema"
 import {
   CONTENT_DIR,
   filenameFromHandle,
@@ -68,7 +71,23 @@ export function planContentExport(
       product.metadata.active_ingredient.trim().length > 0
         ? (product.metadata.active_ingredient as string)
         : undefined
-    const fileBody = serializeContentFile(result.content, activeIngredient)
+    // Only round-trip a reconstitution shape the importer would accept; a stale
+    // variant-era value (e.g. carrying vialAmount) is dropped from the file
+    // rather than written back as if it were valid.
+    const reconstitutionRaw = product.metadata?.reconstitution
+    const reconstitutionResult =
+      reconstitutionRaw !== undefined && reconstitutionRaw !== null
+        ? validateReconstitution(reconstitutionRaw)
+        : undefined
+    const reconstitution =
+      reconstitutionResult && reconstitutionResult.ok
+        ? reconstitutionResult.value
+        : undefined
+    const fileBody = serializeContentFile(
+      result.content,
+      activeIngredient,
+      reconstitution
+    )
     const existing = existingFiles.get(product.handle)
 
     if (existing === fileBody) {

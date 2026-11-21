@@ -1,4 +1,7 @@
-import { validateProductContent } from "../product-content-schema"
+import {
+  validateProductContent,
+  validateReconstitution,
+} from "../product-content-schema"
 
 const validCompound = {
   type: "compound",
@@ -165,5 +168,43 @@ describe("validateProductContent", () => {
       expect(result.error).toContain("content")
       expect(result.error).toContain("Invalid JSON")
     }
+  })
+})
+
+describe("validateReconstitution", () => {
+  it("accepts { enabled } with optional unit and isBlend", () => {
+    expect(validateReconstitution({ enabled: true })).toEqual({
+      ok: true,
+      value: { enabled: true },
+    })
+    expect(validateReconstitution({ enabled: true, unit: "IU", isBlend: true })).toEqual({
+      ok: true,
+      value: { enabled: true, unit: "IU", isBlend: true },
+    })
+  })
+
+  it("rejects an unknown key (stale variant-era vialAmount) naming the field", () => {
+    const result = validateReconstitution({ enabled: true, vialAmount: 5, unit: "mg" })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toContain("reconstitution")
+  })
+
+  it("rejects a bad unit value", () => {
+    const result = validateReconstitution({ enabled: true, unit: "iu" })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toContain("reconstitution")
+  })
+
+  it("rejects a missing enabled flag", () => {
+    const result = validateReconstitution({ unit: "mg" })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toContain("reconstitution")
+  })
+
+  it("parses a JSON-encoded string, matching validateProductContent's dual input", () => {
+    expect(validateReconstitution(JSON.stringify({ enabled: true }))).toEqual({
+      ok: true,
+      value: { enabled: true },
+    })
   })
 })

@@ -6,7 +6,9 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { updateProductsWorkflow } from "@medusajs/medusa/core-flows"
 import {
   validateProductContent,
+  validateReconstitution,
   ProductContent,
+  Reconstitution,
 } from "../utils/product-content-schema"
 import {
   CONTENT_DIR,
@@ -75,13 +77,19 @@ export function planContentImport(
       }
     }
 
-    // active_ingredient lives at the top level of the file for authoring
-    // convenience but is a flat metadata key, NOT part of content — split it
-    // off before validating (the content schema would silently strip it).
+    // active_ingredient and reconstitution live at the top level of the file
+    // for authoring convenience but are flat metadata keys, NOT part of content
+    // — split them off before validating (the content schema would silently
+    // strip them).
     let activeIngredient: string | undefined
+    let reconstitution: Reconstitution | undefined
     let contentPart: unknown = parsed
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      const { active_ingredient, ...rest } = parsed as Record<string, unknown>
+      const {
+        active_ingredient,
+        reconstitution: reconstitutionRaw,
+        ...rest
+      } = parsed as Record<string, unknown>
       contentPart = rest
       if (active_ingredient !== undefined) {
         if (
@@ -96,6 +104,13 @@ export function planContentImport(
           }
         }
         activeIngredient = active_ingredient
+      }
+      if (reconstitutionRaw !== undefined) {
+        const r = validateReconstitution(reconstitutionRaw)
+        if (!r.ok) {
+          return { handle: file.handle, status: "invalid", reason: r.error }
+        }
+        reconstitution = r.value
       }
     }
 
@@ -116,15 +131,19 @@ export function planContentImport(
     const existingMetadata = product.metadata ?? {}
     const existingContent = existingMetadata.content
     const existingActiveIngredient = existingMetadata.active_ingredient
+    const existingReconstitution = existingMetadata.reconstitution
 
     const contentSame = isDeepStrictEqual(existingContent, result.content)
-    // Only compares when the file carries active_ingredient — omitting it from
-    // the file never rewrites/clears an existing flat value.
+    // Only compares when the file carries the flat key — omitting it from the
+    // file never rewrites/clears an existing flat value.
     const activeIngredientSame =
       activeIngredient === undefined ||
       existingActiveIngredient === activeIngredient
+    const reconstitutionSame =
+      reconstitution === undefined ||
+      isDeepStrictEqual(existingReconstitution, reconstitution)
 
-    if (contentSame && activeIngredientSame) {
+    if (contentSame && activeIngredientSame && reconstitutionSame) {
       return { handle: file.handle, status: "unchanged" }
     }
 
@@ -136,6 +155,7 @@ export function planContentImport(
         ...existingMetadata,
         content: result.content,
         ...(activeIngredient ? { active_ingredient: activeIngredient } : {}),
+        ...(reconstitution ? { reconstitution } : {}),
       },
     }
   })

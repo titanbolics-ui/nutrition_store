@@ -1,5 +1,5 @@
 import { resolve } from "path"
-import type { ProductContent } from "./product-content-schema"
+import type { ProductContent, Reconstitution } from "./product-content-schema"
 
 /**
  * Shared file conventions for the content/ directory (the git-committed
@@ -17,21 +17,23 @@ export function serializeContent(content: ProductContent): string {
 }
 
 /**
- * The on-disk file mixes the content object with the optional flat
- * metadata.active_ingredient at the top level (so authors keep everything in
- * one file), even though at rest they live in different metadata keys. This
- * splits them back out on import and rejoins them here on export in a fixed
- * key order (type, active_ingredient, then the rest of content) so the round
- * trip is byte-stable and reports "unchanged".
+ * The on-disk file mixes the content object with optional flat metadata keys
+ * (active_ingredient, reconstitution) at the top level (so authors keep
+ * everything in one file), even though at rest they live in different metadata
+ * keys. This splits them back out on import and rejoins them here on export in
+ * a fixed key order (type, active_ingredient, reconstitution, then the rest of
+ * content) so the round trip is byte-stable and reports "unchanged".
  */
 export function serializeContentFile(
   content: ProductContent,
-  activeIngredient?: string | null
+  activeIngredient?: string | null,
+  reconstitution?: Reconstitution | null
 ): string {
   const { type, ...rest } = content
   const ordered = {
     type,
     ...(activeIngredient ? { active_ingredient: activeIngredient } : {}),
+    ...(reconstitution ? { reconstitution } : {}),
     ...rest,
   }
   return JSON.stringify(ordered, null, 2) + "\n"
